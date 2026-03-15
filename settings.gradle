@@ -6,4 +6,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = '113_camera_lib'
+rootProject.name = 'i113w_camera_lib'
