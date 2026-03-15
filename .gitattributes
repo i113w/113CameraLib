@@ -1,0 +1,16 @@
+* text=auto
+
+*.java text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.jar binary
+*.zip binary
+
+*.toml text
+*.json text
+*.gradle text
+*.properties text

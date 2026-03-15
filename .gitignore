@@ -1,0 +1,46 @@
+# Gradle
+.gradle/
+build/
+out/
+bin/
+
+# DataGen Cache
+src/generated/resources/.cache/
+.cache/
+
+# IntelliJ IDEA
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries
+.idea/shelf
+.idea
+
+# VSCode
+.vscode
+
+*.iml
+*.ipr
+*.iws
+
+# Minecraft Running Logs
+run/
+logs/
+crash-reports/
+debug.log
+debug.log.gz
+latest.log
+
+# Thumbs.db
+.DS_Store
+Thumbs.db
+
+*.jar
+!libs/*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+*.py
+*.md
+!README.md
+!README_CN.md
+!LICENSE.md
