@@ -8,10 +8,14 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 
-public class RTSCameraController {
-    private static final RTSCameraController INSTANCE = new RTSCameraController();
+public class RTSCameraManager {
 
-    public enum CameraStyle { FREE, RTS }
+    private static final RTSCameraManager INSTANCE = new RTSCameraManager();
+
+    public enum CameraStyle {
+        FREE, // 原版自由飞行视角
+        RTS   // 等距锁定视角 (模拟正交)
+    }
 
     private boolean isActive = false;
     private CameraStyle currentStyle = CameraStyle.RTS;
@@ -26,16 +30,9 @@ public class RTSCameraController {
 
     private static final float LERP_SPEED = 0.2f;
 
-    public static RTSCameraController get() { return INSTANCE; }
+    private RTSCameraManager() {}
 
-    public void reset() {
-        if (isActive) exitRTS();
-        this.cameraEntity = null;
-        this.originalViewEntity = null;
-        this.isActive = false;
-        this.currentStyle = CameraStyle.RTS;
-        this.targetPos = Vec3.ZERO;
-    }
+    public static RTSCameraManager get() { return INSTANCE; }
 
     public void toggleRTSMode() {
         if (isActive) exitRTS();
@@ -46,7 +43,8 @@ public class RTSCameraController {
         if (!isActive) return;
         if (this.currentStyle == CameraStyle.FREE) {
             this.currentStyle = CameraStyle.RTS;
-            double groundY = Minecraft.getInstance().player != null ? Minecraft.getInstance().player.getY() : 64.0;
+            double groundY = Minecraft.getInstance().player != null
+                    ? Minecraft.getInstance().player.getY() : 64.0;
             Vec3 forward = Vec3.directionFromRotation(targetPitch, targetYaw);
             if (forward.y < -0.1) {
                 double dist = (targetPos.y - groundY) / -forward.y;
@@ -54,11 +52,10 @@ public class RTSCameraController {
             } else {
                 this.targetPos = new Vec3(targetPos.x, groundY, targetPos.z);
             }
-
-            // 使用配置的吸附角度
-            float snap = Math.max(1.0f, CameraLibConfig.rtsSnapAngle);
-            float halfSnap = snap / 2.0f;
-            this.targetYaw = Math.round((targetYaw - halfSnap) / snap) * snap + halfSnap;
+            float snap = CameraLibConfig.rtsSnapAngle;
+            if (snap > 0) {
+                this.targetYaw = Math.round((targetYaw - snap/2f) / snap) * snap + snap/2f;
+            }
             this.targetPitch = Mth.clamp(targetPitch, CameraLibConfig.rtsPitchMin, CameraLibConfig.rtsPitchMax);
         } else {
             this.currentStyle = CameraStyle.FREE;
@@ -81,16 +78,16 @@ public class RTSCameraController {
 
         if (this.currentStyle == CameraStyle.RTS) {
             this.targetPos = new Vec3(playerPos.x, playerPos.y, playerPos.z);
-
-            float snap = Math.max(1.0f, CameraLibConfig.rtsSnapAngle);
-            float halfSnap = snap / 2.0f;
-            this.targetYaw = Math.round((mc.player.getYRot() - halfSnap) / snap) * snap + halfSnap;
-
-            this.targetPitch = Mth.clamp(40f, CameraLibConfig.rtsPitchMin, CameraLibConfig.rtsPitchMax);
+            float rawYaw = mc.player.getYRot();
+            float snap = CameraLibConfig.rtsSnapAngle;
+            this.targetYaw = snap > 0
+                    ? Math.round((rawYaw - snap / 2f) / snap) * snap + snap / 2f
+                    : rawYaw;
+            this.targetPitch = (CameraLibConfig.rtsPitchMin + CameraLibConfig.rtsPitchMax) / 2.0f;
         } else {
-            this.targetPos = playerPos.add(0, zoomLevel, 0);
-            this.targetYaw = mc.player.getYRot();
-            this.targetPitch = 60f; // 初始默认
+            this.targetPos  = playerPos.add(0, zoomLevel, 0);
+            this.targetYaw  = mc.player.getYRot();
+            this.targetPitch = 60f;
         }
 
         int minHeight = mc.level.getMinBuildHeight();
@@ -103,7 +100,7 @@ public class RTSCameraController {
         this.cameraEntity.setYRot(targetYaw);
         this.cameraEntity.setXRot(targetPitch);
 
-        mc.level.addEntity(this.cameraEntity);
+        // 劫持玩家相机
         mc.setCameraEntity(this.cameraEntity);
         this.isActive = true;
     }
@@ -120,6 +117,17 @@ public class RTSCameraController {
             cameraEntity = null;
         }
         this.isActive = false;
+        this.currentStyle = CameraStyle.RTS;
+    }
+
+     // 退出登录或强制重置时调用，保证所有状态归零。
+    public void reset() {
+        if (isActive) exitRTS();
+        this.originalViewEntity = null;
+        this.targetPos   = Vec3.ZERO;
+        this.targetYaw   = 0f;
+        this.targetPitch = 40f;
+        this.zoomLevel   = 20f;
     }
 
     public void adjustPitch(float delta) {
@@ -139,8 +147,8 @@ public class RTSCameraController {
 
     public void tick(float partialTick) {
         if (!isActive || cameraEntity == null) return;
-        double goalX, goalY, goalZ;
 
+        double goalX, goalY, goalZ;
         if (currentStyle == CameraStyle.RTS) {
             double orthoDist = this.zoomLevel * 4.0;
             Vec3 backward = Vec3.directionFromRotation(targetPitch, targetYaw).scale(-orthoDist);
@@ -158,23 +166,27 @@ public class RTSCameraController {
         double curZ = Mth.lerp(LERP_SPEED, cameraEntity.getZ(), goalZ);
 
         float yawDiff = Mth.wrapDegrees(targetYaw - cameraEntity.getYRot());
-        float curYaw = cameraEntity.getYRot() + yawDiff * LERP_SPEED;
+        float curYaw   = cameraEntity.getYRot() + yawDiff * LERP_SPEED;
         float curPitch = Mth.lerp(LERP_SPEED, cameraEntity.getXRot(), targetPitch);
 
         cameraEntity.setPos(curX, curY, curZ);
         cameraEntity.setYRot(curYaw);
         cameraEntity.setXRot(curPitch);
 
-        cameraEntity.xo = curX;
-        cameraEntity.yo = curY;
-        cameraEntity.zo = curZ;
-        cameraEntity.yRotO = curYaw;
-        cameraEntity.xRotO = curPitch;
+        cameraEntity.xo     = curX;
+        cameraEntity.yo     = curY;
+        cameraEntity.zo     = curZ;
+        cameraEntity.yRotO  = curYaw;
+        cameraEntity.xRotO  = curPitch;
     }
 
-    public void handleInput(float moveX, float moveZ, float rotateYaw, float zoomDelta, float moveY, boolean sprintDown) {
+    public void handleInput(float moveX, float moveZ, float rotateYaw, float moveY) {
         if (!isActive) return;
-        float moveSpeed = sprintDown ? CameraLibConfig.moveSprintMultiplier : CameraLibConfig.moveBaseSpeed;
+
+        float moveSpeed = CameraLibConfig.moveBaseSpeed;
+        if (Minecraft.getInstance().options.keySprint.isDown()) {
+            moveSpeed *= CameraLibConfig.moveSprintMultiplier;
+        }
 
         float sin = Mth.sin(targetYaw * Mth.DEG_TO_RAD);
         float cos = Mth.cos(targetYaw * Mth.DEG_TO_RAD);
@@ -183,7 +195,8 @@ public class RTSCameraController {
         double dz = (moveZ * cos + moveX * sin) * moveSpeed;
         double dy = moveY * moveSpeed;
 
-        int minHeight = Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getMinBuildHeight() : -64;
+        int minHeight = Minecraft.getInstance().level != null
+                ? Minecraft.getInstance().level.getMinBuildHeight() : -64;
 
         if (this.currentStyle == CameraStyle.RTS) {
             this.targetPos = this.targetPos.add(dx, dy, dz);
@@ -191,9 +204,7 @@ public class RTSCameraController {
             this.targetPos = new Vec3(this.targetPos.x, clampedY, this.targetPos.z);
         } else {
             this.targetPos = this.targetPos.add(dx, dy, dz);
-            // 应用自由相机旋转速度
             this.targetYaw += rotateYaw * CameraLibConfig.freeRotationSpeed;
-            this.targetPos = this.targetPos.add(0, zoomDelta * -2.0, 0);
             double clampedY = Mth.clamp(this.targetPos.y, minHeight + 5, 320);
             this.targetPos = new Vec3(this.targetPos.x, clampedY, this.targetPos.z);
         }
@@ -201,6 +212,7 @@ public class RTSCameraController {
 
     public void handleZoom(float scrollDelta) {
         if (!isActive) return;
+
         if (this.currentStyle == CameraStyle.RTS) {
             this.zoomLevel -= scrollDelta * CameraLibConfig.rtsZoomSpeed;
             this.zoomLevel = Mth.clamp(this.zoomLevel, CameraLibConfig.rtsZoomMin, CameraLibConfig.rtsZoomMax);

@@ -3,8 +3,6 @@ package com.i113w.camera_lib.entity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
-import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.server.level.ServerEntity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
@@ -18,18 +16,21 @@ public class RTSCameraEntity extends Entity {
 
     @Override
     public void tick() {
+        // 位置完全由 Camera Manager 掌控，屏蔽原版物理计算
         this.xo = this.getX();
         this.yo = this.getY();
         this.zo = this.getZ();
-        if (!this.isAlive()) this.remove(RemovalReason.DISCARDED);
     }
 
-    @Override protected void defineSynchedData(SynchedEntityData.Builder builder) {}
+    @Override protected void defineSynchedData() {}
     @Override protected void readAdditionalSaveData(@NotNull CompoundTag tag) {}
     @Override protected void addAdditionalSaveData(@NotNull CompoundTag tag) {}
 
     @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket(ServerEntity entity) {
-        throw new UnsupportedOperationException("RTSCameraEntity should not be spawned on server!");
+    public boolean shouldBeSaved() { return false; }
+
+    @Override
+    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() {
+        throw new UnsupportedOperationException("RTSCameraEntity is client-only!");
     }
 }

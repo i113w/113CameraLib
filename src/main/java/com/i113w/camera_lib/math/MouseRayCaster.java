@@ -11,72 +11,65 @@ import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
 public class MouseRayCaster {
+
     public static HitResult pickFromMouse(double mouseX, double mouseY, double pickRange) {
         Minecraft mc = Minecraft.getInstance();
         Camera camera = mc.gameRenderer.getMainCamera();
 
-        if (camera == null || mc.level == null || !MatrixCache.isValid()) {
+        if (camera == null || mc.level == null) {
             return BlockHitResult.miss(Vec3.ZERO, Direction.UP, BlockPos.ZERO);
         }
 
+        int winW = mc.getWindow().getWidth();
+        int winH = mc.getWindow().getHeight();
+
+        float ndcX = (float)(2.0 * mouseX / winW  - 1.0);
+        float ndcY = (float)(1.0 - 2.0 * mouseY / winH);
+
+        Matrix4f view = MatrixCache.VIEW_MATRIX;
+        Matrix4f proj = MatrixCache.PROJ_MATRIX;
+
         Vec3 eyePos = camera.getPosition();
-        Vec3 rayDir = calculateRayDirection(mouseX, mouseY);
+        Vec3 rayDir = unprojectRay(ndcX, ndcY, view, proj);
         Vec3 endPos = eyePos.add(rayDir.scale(pickRange));
 
         HitResult blockHit = mc.level.clip(new ClipContext(
                 eyePos, endPos,
-                ClipContext.Block.COLLIDER,
-                ClipContext.Fluid.NONE,
+                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE,
                 camera.getEntity()
         ));
 
-        double distToBlock = blockHit.getLocation().distanceToSqr(eyePos);
-        Vec3 entityCheckEnd = blockHit.getType() != HitResult.Type.MISS ? blockHit.getLocation() : endPos;
-        AABB searchBox = new AABB(eyePos, endPos).inflate(1.0);
+        double distBlock = blockHit.getLocation().distanceToSqr(eyePos);
+
+        Vec3 entityEnd = blockHit.getType() != HitResult.Type.MISS ? blockHit.getLocation() : endPos;
+        AABB box = new AABB(eyePos, entityEnd).inflate(1.0);
 
         EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(
-                mc.level,
-                camera.getEntity(),
-                eyePos,
-                entityCheckEnd,
-                searchBox,
-                (e) -> !e.isSpectator() && e.isPickable()
+                mc.level, camera.getEntity(), eyePos, entityEnd, box,
+                e -> !e.isSpectator() && e.isPickable()
         );
 
-        if (entityHit != null) {
-            double distToEntity = eyePos.distanceToSqr(entityHit.getLocation());
-            if (distToEntity < distToBlock) {
-                return entityHit;
-            }
+        if (entityHit != null && eyePos.distanceToSqr(entityHit.getLocation()) < distBlock) {
+            return entityHit;
         }
+
         return blockHit;
     }
 
-    private static Vec3 calculateRayDirection(double mouseX, double mouseY) {
-        Minecraft mc = Minecraft.getInstance();
-        int windowWidth = mc.getWindow().getWidth();
-        int windowHeight = mc.getWindow().getHeight();
+    private static Vec3 unprojectRay(float ndcX, float ndcY, Matrix4f view, Matrix4f proj) {
+        Matrix4f mvp = new Matrix4f(proj).mul(view);
+        Matrix4f invMVP = mvp.invert(new Matrix4f());
 
-        float ndcX = (float) (2.0 * mouseX / windowWidth - 1.0);
-        float ndcY = (float) (1.0 - 2.0 * mouseY / windowHeight);
+        Vector4f near4 = new Vector4f(ndcX, ndcY, -1f, 1f).mul(invMVP);
+        Vector4f far4  = new Vector4f(ndcX, ndcY,  1f, 1f).mul(invMVP);
 
-        Matrix4f invMVP = new Matrix4f(MatrixCache.getProjectionMatrix());
-        invMVP.mul(MatrixCache.getModelViewMatrix());
-        invMVP.invert();
-
-        Vector4f nearPoint = new Vector4f(ndcX, ndcY, -1.0f, 1.0f);
-        Vector4f farPoint = new Vector4f(ndcX, ndcY, 1.0f, 1.0f);
-
-        nearPoint.mul(invMVP);
-        farPoint.mul(invMVP);
-
-        if (nearPoint.w != 0) nearPoint.div(nearPoint.w);
-        if (farPoint.w != 0) farPoint.div(farPoint.w);
+        if (near4.w() != 0f) near4.div(near4.w());
+        if (far4.w()  != 0f) far4.div(far4.w());
 
         return new Vec3(
-                farPoint.x() - nearPoint.x(),
-                farPoint.y() - nearPoint.y(),
-                farPoint.z() - nearPoint.z()
+                far4.x() - near4.x(),
+                far4.y() - near4.y(),
+                far4.z() - near4.z()
         ).normalize();
     }
 }

@@ -1,31 +1,32 @@
 package com.i113w.camera_lib.api.event;
 
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.HitResult;
-import net.neoforged.bus.api.Event;
+import net.minecraftforge.eventbus.api.Event;
+
+import java.util.Collections;
 import java.util.List;
 
-/**
- * 当玩家在 RTS 模式下按下右键或完成右键拖拽时触发
- */
 public class RTSRightClickEvent extends Event {
-    private final HitResult singleHitResult;
-    private final List<Entity> dragTargets;
+    private final Player player;
     private final boolean isDrag;
 
-    public RTSRightClickEvent(HitResult singleHitResult) {
+    // 如果是拖拽框选，提供框内的目标实体
+    private final List<Entity> draggedTargets;
+
+    // 如果是单点点击，提供射线检测结果
+    private final HitResult singleHitResult;
+
+    public RTSRightClickEvent(Player player, boolean isDrag, List<Entity> draggedTargets, HitResult singleHitResult) {
+        this.player = player;
+        this.isDrag = isDrag;
+        this.draggedTargets = draggedTargets != null ? Collections.unmodifiableList(draggedTargets) : Collections.emptyList();
         this.singleHitResult = singleHitResult;
-        this.dragTargets = List.of();
-        this.isDrag = false;
     }
 
-    public RTSRightClickEvent(List<Entity> dragTargets) {
-        this.singleHitResult = null;
-        this.dragTargets = dragTargets;
-        this.isDrag = true;
-    }
-
+    public Player getPlayer() { return player; }
     public boolean isDrag() { return isDrag; }
+    public List<Entity> getDraggedTargets() { return draggedTargets; }
     public HitResult getSingleHitResult() { return singleHitResult; }
-    public List<Entity> getDragTargets() { return dragTargets; }
 }

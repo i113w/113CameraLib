@@ -1,10 +1,30 @@
 package com.i113w.camera_lib.config;
 
-import net.neoforged.fml.event.config.ModConfigEvent;
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
+import com.i113w.camera_lib.CameraLib;
 
+@Mod.EventBusSubscriber(modid = CameraLib.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class CameraLibConfig {
-    public static final ModConfigSpec SPEC;
+
+    // --- Spec 定义 ---
+    private static final ForgeConfigSpec.DoubleValue RTS_PITCH_MIN;
+    private static final ForgeConfigSpec.DoubleValue RTS_PITCH_MAX;
+    private static final ForgeConfigSpec.DoubleValue FREE_PITCH_MIN;
+    private static final ForgeConfigSpec.DoubleValue FREE_PITCH_MAX;
+    private static final ForgeConfigSpec.DoubleValue RTS_ZOOM_MIN;
+    private static final ForgeConfigSpec.DoubleValue RTS_ZOOM_MAX;
+    private static final ForgeConfigSpec.DoubleValue RTS_ZOOM_SPEED;
+    private static final ForgeConfigSpec.DoubleValue EDGE_PAN_THRESHOLD;
+    private static final ForgeConfigSpec.DoubleValue EDGE_PAN_PITCH_SPEED;
+    private static final ForgeConfigSpec.DoubleValue RTS_SNAP_ANGLE;
+    private static final ForgeConfigSpec.DoubleValue FREE_ROTATION_SPEED;
+    private static final ForgeConfigSpec.DoubleValue MOVE_BASE_SPEED;
+    private static final ForgeConfigSpec.DoubleValue MOVE_SPRINT_MULT;
+
+    public static final ForgeConfigSpec SPEC;
 
     // --- 高性能静态缓存字段 ---
     public static float rtsPitchMin;
@@ -21,48 +41,34 @@ public class CameraLibConfig {
     public static float moveBaseSpeed;
     public static float moveSprintMultiplier;
 
-    // --- Spec 定义 ---
-    private static final ModConfigSpec.DoubleValue RTS_PITCH_MIN;
-    private static final ModConfigSpec.DoubleValue RTS_PITCH_MAX;
-    private static final ModConfigSpec.DoubleValue FREE_PITCH_MIN;
-    private static final ModConfigSpec.DoubleValue FREE_PITCH_MAX;
-    private static final ModConfigSpec.DoubleValue RTS_ZOOM_MIN;
-    private static final ModConfigSpec.DoubleValue RTS_ZOOM_MAX;
-    private static final ModConfigSpec.DoubleValue RTS_ZOOM_SPEED;
-    private static final ModConfigSpec.DoubleValue EDGE_PAN_THRESHOLD;
-    private static final ModConfigSpec.DoubleValue EDGE_PAN_PITCH_SPEED;
-    private static final ModConfigSpec.DoubleValue RTS_SNAP_ANGLE;
-    private static final ModConfigSpec.DoubleValue FREE_ROTATION_SPEED;
-    private static final ModConfigSpec.DoubleValue MOVE_BASE_SPEED;
-    private static final ModConfigSpec.DoubleValue MOVE_SPRINT_MULT;
-
     static {
-        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
+        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
 
         builder.comment("113's Camera Lib - Client Configuration").push("camera_settings");
 
         builder.push("rts_mode");
-        RTS_PITCH_MIN = builder.defineInRange("rtsPitchMin", 35.0, -90.0, 90.0);
-        RTS_PITCH_MAX = builder.defineInRange("rtsPitchMax", 45.0, -90.0, 90.0);
-        RTS_ZOOM_MIN = builder.defineInRange("rtsZoomMin", 10.0, 1.0, 200.0);
-        RTS_ZOOM_MAX = builder.defineInRange("rtsZoomMax", 80.0, 1.0, 200.0);
-        RTS_ZOOM_SPEED = builder.defineInRange("rtsZoomSpeedMultiplier", 3.5, 0.1, 20.0);
-        RTS_SNAP_ANGLE = builder.defineInRange("rtsSnapAngle", 90.0, 0.0, 360.0);
+        RTS_PITCH_MIN      = builder.defineInRange("rtsPitchMin", 35.0, -90.0, 90.0);
+        RTS_PITCH_MAX      = builder.defineInRange("rtsPitchMax", 45.0, -90.0, 90.0);
+        RTS_ZOOM_MIN       = builder.defineInRange("rtsZoomMin", 10.0, 1.0, 200.0);
+        RTS_ZOOM_MAX       = builder.defineInRange("rtsZoomMax", 80.0, 1.0, 200.0);
+        RTS_ZOOM_SPEED     = builder.defineInRange("rtsZoomSpeedMultiplier", 3.5, 0.1, 20.0);
+        RTS_SNAP_ANGLE     = builder.defineInRange("rtsSnapAngle", 90.0, 0.0, 360.0);
         builder.pop();
 
         builder.push("free_mode");
-        FREE_PITCH_MIN = builder.defineInRange("freePitchMin", 10.0, -90.0, 90.0);
-        FREE_PITCH_MAX = builder.defineInRange("freePitchMax", 90.0, -90.0, 90.0);
+        FREE_PITCH_MIN      = builder.defineInRange("freePitchMin", 10.0, -90.0, 90.0);
+        FREE_PITCH_MAX      = builder.defineInRange("freePitchMax", 90.0, -90.0, 90.0);
         FREE_ROTATION_SPEED = builder.defineInRange("freeRotationSpeed", 5.0, 0.1, 50.0);
         builder.pop();
 
         builder.push("edge_panning");
-        EDGE_PAN_THRESHOLD = builder.comment("Distance in pixels from the screen edge").defineInRange("thresholdPx", 20.0, 0.0, 200.0);
+        EDGE_PAN_THRESHOLD  = builder.comment("Distance in pixels from the screen edge")
+                                     .defineInRange("thresholdPx", 20.0, 0.0, 200.0);
         EDGE_PAN_PITCH_SPEED = builder.defineInRange("pitchAdjustSpeed", 2.0, 0.0, 20.0);
         builder.pop();
 
         builder.push("movement");
-        MOVE_BASE_SPEED = builder.defineInRange("baseSpeed", 1.0, 0.01, 50.0);
+        MOVE_BASE_SPEED  = builder.defineInRange("baseSpeed", 1.0, 0.01, 50.0);
         MOVE_SPRINT_MULT = builder.defineInRange("sprintMultiplier", 2.0, 1.0, 20.0);
         builder.pop();
 
@@ -74,26 +80,23 @@ public class CameraLibConfig {
      * 将 Config 值烘焙到静态变量中
      */
     public static void bake() {
-        rtsPitchMin = RTS_PITCH_MIN.get().floatValue();
-        rtsPitchMax = RTS_PITCH_MAX.get().floatValue();
-        freePitchMin = FREE_PITCH_MIN.get().floatValue();
-        freePitchMax = FREE_PITCH_MAX.get().floatValue();
-        rtsZoomMin = RTS_ZOOM_MIN.get().floatValue();
-        rtsZoomMax = RTS_ZOOM_MAX.get().floatValue();
-        rtsZoomSpeed = RTS_ZOOM_SPEED.get().floatValue();
-        edgePanThreshold = EDGE_PAN_THRESHOLD.get();
-        edgePanPitchSpeed = EDGE_PAN_PITCH_SPEED.get().floatValue();
-        rtsSnapAngle = RTS_SNAP_ANGLE.get().floatValue();
-        freeRotationSpeed = FREE_ROTATION_SPEED.get().floatValue();
-        moveBaseSpeed = MOVE_BASE_SPEED.get().floatValue();
+        rtsPitchMin        = RTS_PITCH_MIN.get().floatValue();
+        rtsPitchMax        = RTS_PITCH_MAX.get().floatValue();
+        freePitchMin       = FREE_PITCH_MIN.get().floatValue();
+        freePitchMax       = FREE_PITCH_MAX.get().floatValue();
+        rtsZoomMin         = RTS_ZOOM_MIN.get().floatValue();
+        rtsZoomMax         = RTS_ZOOM_MAX.get().floatValue();
+        rtsZoomSpeed       = RTS_ZOOM_SPEED.get().floatValue();
+        edgePanThreshold   = EDGE_PAN_THRESHOLD.get();
+        edgePanPitchSpeed  = EDGE_PAN_PITCH_SPEED.get().floatValue();
+        rtsSnapAngle       = RTS_SNAP_ANGLE.get().floatValue();
+        freeRotationSpeed  = FREE_ROTATION_SPEED.get().floatValue();
+        moveBaseSpeed      = MOVE_BASE_SPEED.get().floatValue();
         moveSprintMultiplier = MOVE_SPRINT_MULT.get().floatValue();
     }
 
-    public static void onLoad(final ModConfigEvent.Loading event) {
-        if (event.getConfig().getSpec() == SPEC) bake();
-    }
-
-    public static void onReload(final ModConfigEvent.Reloading event) {
+    @SubscribeEvent
+    static void onLoad(final ModConfigEvent event) {
         if (event.getConfig().getSpec() == SPEC) bake();
     }
 }
