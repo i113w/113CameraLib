@@ -20,6 +20,6 @@ public class GameRendererMixin {
 
         Window window = Minecraft.getInstance().getWindow();
         float aspect = window.getHeight() == 0 ? 1.0f : (float) window.getWidth() / (float) window.getHeight();
-        cir.setReturnValue(OrthographicProjection.create(controller.getZoomLevel(), aspect));
+        cir.setReturnValue(OrthographicProjection.create(controller.getOrthographicVisibleWidth(), aspect));
     }
 }

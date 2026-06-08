@@ -144,6 +144,7 @@ Player-adjustable values in `.minecraft/config/i113w_camera_lib-client.toml`:
 | `freePitchMin / Max` | 10 / 90 | Pitch clamp range in FREE mode |
 | `rtsZoomMin / Max` | 10 / 80 | Zoom distance clamp in RTS mode |
 | `rtsZoomSpeedMultiplier` | 3.5 | Scroll wheel zoom sensitivity |
+| `orthographicZoomMultiplier` | 2.0 | Multiplier applied only to orthographic visible width |
 | `rtsSnapAngle` | 90 | Degrees per yaw snap step |
 | `freeRotationSpeed` | 5.0 | Mouse yaw sensitivity in FREE mode |
 | `thresholdPx` | 20 | Edge-pan trigger distance (pixels from screen edge) |

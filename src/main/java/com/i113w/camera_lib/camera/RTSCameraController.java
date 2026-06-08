@@ -26,6 +26,7 @@ public class RTSCameraController {
     private float zoomLevel = 20f;
 
     private static final float LERP_SPEED = 0.2f;
+    private static final float ORTHOGRAPHIC_LOCKED_PITCH = 35.264389682754654f;
     private static final double ORTHOGRAPHIC_VIEW_DISTANCE = 128.0;
     private static final long SHADER_FALLBACK_MESSAGE_INTERVAL_MS = 5000L;
 
@@ -71,6 +72,7 @@ public class RTSCameraController {
     public boolean isActive() { return isActive; }
     public boolean isGroundFocusedStyle() { return currentStyle == CameraStyle.RTS || currentStyle == CameraStyle.ORTHOGRAPHIC; }
     public float getZoomLevel() { return zoomLevel; }
+    public float getOrthographicVisibleWidth() { return zoomLevel * CameraLibConfig.orthographicZoomMultiplier; }
     public Vec3 getFocusPosition() { return targetPos; }
 
     public boolean shouldUseOrthographicProjection() {
@@ -101,7 +103,11 @@ public class RTSCameraController {
             float halfSnap = snap / 2.0f;
             this.targetYaw = Math.round((mc.player.getYRot() - halfSnap) / snap) * snap + halfSnap;
 
-            this.targetPitch = Mth.clamp(40f, CameraLibConfig.rtsPitchMin, CameraLibConfig.rtsPitchMax);
+            if (this.currentStyle == CameraStyle.ORTHOGRAPHIC && CameraLibConfig.lockOrthographicPitch) {
+                this.targetPitch = ORTHOGRAPHIC_LOCKED_PITCH;
+            } else {
+                this.targetPitch = Mth.clamp(40f, CameraLibConfig.rtsPitchMin, CameraLibConfig.rtsPitchMax);
+            }
         } else {
             this.targetPos = playerPos.add(0, zoomLevel, 0);
             this.targetYaw = mc.player.getYRot();
@@ -139,6 +145,10 @@ public class RTSCameraController {
 
     public void adjustPitch(float delta) {
         if (!isActive) return;
+        if (currentStyle == CameraStyle.ORTHOGRAPHIC && CameraLibConfig.lockOrthographicPitch) {
+            this.targetPitch = ORTHOGRAPHIC_LOCKED_PITCH;
+            return;
+        }
         this.targetPitch += delta;
         if (isGroundFocusedStyle()) {
             this.targetPitch = Mth.clamp(this.targetPitch, CameraLibConfig.rtsPitchMin, CameraLibConfig.rtsPitchMax);
@@ -249,6 +259,7 @@ public class RTSCameraController {
         }
         this.currentStyle = CameraStyle.ORTHOGRAPHIC;
         applyRtsRotationRules();
+        applyOrthographicPitchLock();
         updateShaderFallback();
     }
 
@@ -279,6 +290,12 @@ public class RTSCameraController {
         float halfSnap = snap / 2.0f;
         this.targetYaw = Math.round((targetYaw - halfSnap) / snap) * snap + halfSnap;
         this.targetPitch = Mth.clamp(targetPitch, CameraLibConfig.rtsPitchMin, CameraLibConfig.rtsPitchMax);
+    }
+
+    private void applyOrthographicPitchLock() {
+        if (this.currentStyle == CameraStyle.ORTHOGRAPHIC && CameraLibConfig.lockOrthographicPitch) {
+            this.targetPitch = ORTHOGRAPHIC_LOCKED_PITCH;
+        }
     }
 
     private void fallbackOrthographicToRts() {

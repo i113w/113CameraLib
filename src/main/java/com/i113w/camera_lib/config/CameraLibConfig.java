@@ -14,6 +14,8 @@ public class CameraLibConfig {
     public static float rtsZoomMin;
     public static float rtsZoomMax;
     public static float rtsZoomSpeed;
+    public static float orthographicZoomMultiplier;
+    public static boolean lockOrthographicPitch;
     public static double edgePanThreshold;
     public static float edgePanPitchSpeed;
     public static float rtsSnapAngle;
@@ -29,6 +31,8 @@ public class CameraLibConfig {
     private static final ModConfigSpec.DoubleValue RTS_ZOOM_MIN;
     private static final ModConfigSpec.DoubleValue RTS_ZOOM_MAX;
     private static final ModConfigSpec.DoubleValue RTS_ZOOM_SPEED;
+    private static final ModConfigSpec.DoubleValue ORTHOGRAPHIC_ZOOM_MULTIPLIER;
+    private static final ModConfigSpec.BooleanValue LOCK_ORTHOGRAPHIC_PITCH;
     private static final ModConfigSpec.DoubleValue EDGE_PAN_THRESHOLD;
     private static final ModConfigSpec.DoubleValue EDGE_PAN_PITCH_SPEED;
     private static final ModConfigSpec.DoubleValue RTS_SNAP_ANGLE;
@@ -42,11 +46,15 @@ public class CameraLibConfig {
         builder.comment("113's Camera Lib - Client Configuration").push("camera_settings");
 
         builder.push("rts_mode");
-        RTS_PITCH_MIN = builder.defineInRange("rtsPitchMin", 35.0, -90.0, 90.0);
+        RTS_PITCH_MIN = builder.defineInRange("rtsPitchMin", 35.26439, -90.0, 90.0);
         RTS_PITCH_MAX = builder.defineInRange("rtsPitchMax", 45.0, -90.0, 90.0);
         RTS_ZOOM_MIN = builder.defineInRange("rtsZoomMin", 10.0, 1.0, 200.0);
         RTS_ZOOM_MAX = builder.defineInRange("rtsZoomMax", 80.0, 1.0, 200.0);
         RTS_ZOOM_SPEED = builder.defineInRange("rtsZoomSpeedMultiplier", 3.5, 0.1, 20.0);
+        ORTHOGRAPHIC_ZOOM_MULTIPLIER = builder.comment("Multiplier applied only to orthographic camera visible width. RTS zoom clamps are unchanged.")
+                .defineInRange("orthographicZoomMultiplier", 2.0, 0.1, 20.0);
+        LOCK_ORTHOGRAPHIC_PITCH = builder.comment("When true, orthographic camera pitch is locked to 35 degrees.")
+                .define("lockOrthographicPitch", true);
         RTS_SNAP_ANGLE = builder.defineInRange("rtsSnapAngle", 90.0, 0.0, 360.0);
         builder.pop();
 
@@ -81,6 +89,8 @@ public class CameraLibConfig {
         rtsZoomMin = RTS_ZOOM_MIN.get().floatValue();
         rtsZoomMax = RTS_ZOOM_MAX.get().floatValue();
         rtsZoomSpeed = RTS_ZOOM_SPEED.get().floatValue();
+        orthographicZoomMultiplier = ORTHOGRAPHIC_ZOOM_MULTIPLIER.get().floatValue();
+        lockOrthographicPitch = LOCK_ORTHOGRAPHIC_PITCH.get();
         edgePanThreshold = EDGE_PAN_THRESHOLD.get();
         edgePanPitchSpeed = EDGE_PAN_PITCH_SPEED.get().floatValue();
         rtsSnapAngle = RTS_SNAP_ANGLE.get().floatValue();
