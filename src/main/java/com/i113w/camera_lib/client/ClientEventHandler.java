@@ -1,7 +1,8 @@
-package com.i113w.camera_lib.input;
+package com.i113w.camera_lib.client;
 
 import com.i113w.camera_lib.CameraLib;
-import com.i113w.camera_lib.camera.RTSCameraManager;
+import com.i113w.camera_lib.api.CameraLibAPI;
+import com.i113w.camera_lib.camera.RTSCameraController;
 import com.i113w.camera_lib.math.MatrixCache;
 import com.i113w.camera_lib.selection.RTSSelectionManager;
 import net.minecraftforge.api.distmarker.Dist;
@@ -18,8 +19,9 @@ public class ClientEventHandler {
      */
     @SubscribeEvent
     public static void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
-        RTSCameraManager.get().reset();
+        RTSCameraController.get().reset();
         RTSSelectionManager.get().reset();
+        CameraLibAPI.get().clearSelection();
         MatrixCache.clear();
     }
 }

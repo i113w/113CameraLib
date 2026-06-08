@@ -2,15 +2,17 @@ package com.i113w.camera_lib.input;
 
 import com.i113w.camera_lib.CameraLib;
 import com.i113w.camera_lib.api.CameraLibAPI;
+import com.i113w.camera_lib.api.IRTSInteractionDelegate;
 import com.i113w.camera_lib.api.event.RTSBoxSelectEvent;
 import com.i113w.camera_lib.api.event.RTSRightClickEvent;
-import com.i113w.camera_lib.camera.RTSCameraManager;
+import com.i113w.camera_lib.camera.RTSCameraController;
 import com.i113w.camera_lib.config.CameraLibConfig;
 import com.i113w.camera_lib.math.MouseRayCaster;
 import com.i113w.camera_lib.math.ScreenProjector;
 import com.i113w.camera_lib.selection.RTSSelectionManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -32,7 +34,7 @@ public class RTSInputHandler {
     // 禁用原版移动
     @SubscribeEvent
     public static void onInputUpdate(MovementInputUpdateEvent event) {
-        if (RTSCameraManager.get().isActive()) {
+        if (RTSCameraController.get().isActive()) {
             event.getInput().forwardImpulse = 0;
             event.getInput().leftImpulse = 0;
             event.getInput().jumping = false;
@@ -43,8 +45,8 @@ public class RTSInputHandler {
     // 鼠标滚轮缩放
     @SubscribeEvent
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
-        if (RTSCameraManager.get().isActive()) {
-            RTSCameraManager.get().handleZoom((float) event.getScrollDelta());
+        if (RTSCameraController.get().isActive()) {
+            RTSCameraController.get().handleZoom((float) event.getScrollDelta());
             event.setCanceled(true);
         }
     }
@@ -53,7 +55,7 @@ public class RTSInputHandler {
 
     @SubscribeEvent
     public static void onMouseClick(InputEvent.MouseButton.Pre event) {
-        if (!RTSCameraManager.get().isActive()) return;
+        if (!RTSCameraController.get().isActive()) return;
 
         Minecraft mc = Minecraft.getInstance();
         RTSSelectionManager selMgr = RTSSelectionManager.get();
@@ -63,10 +65,10 @@ public class RTSInputHandler {
         // 左键框选
         if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             if (event.getAction() == GLFW.GLFW_PRESS) {
-                selMgr.startLeftDrag((float) mx, (float) my);
-            } else if (event.getAction() == GLFW.GLFW_RELEASE && selMgr.isLeftDragging()) {
+                selMgr.startDrag((float) mx, (float) my);
+            } else if (event.getAction() == GLFW.GLFW_RELEASE && selMgr.isDragging()) {
                 performLeftSelection();
-                selMgr.endLeftDrag();
+                selMgr.endDrag();
             }
             event.setCanceled(true);
         } else if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
@@ -84,10 +86,10 @@ public class RTSInputHandler {
 
     @SubscribeEvent
     public static void onKeyInput(InputEvent.Key event) {
-        if (!RTSCameraManager.get().isActive()) return;
+        if (!RTSCameraController.get().isActive()) return;
         if (event.getKey() == GLFW.GLFW_KEY_ESCAPE && event.getAction() == GLFW.GLFW_PRESS) {
-            RTSCameraManager.get().toggleRTSMode();
-            RTSSelectionManager.get().clearSelection();
+            RTSCameraController.get().toggleRTSMode();
+            CameraLibAPI.get().clearSelection();
             Minecraft.getInstance().setScreen(null);
         }
     }
@@ -98,7 +100,7 @@ public class RTSInputHandler {
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
 
-        RTSCameraManager cameraMgr = RTSCameraManager.get();
+        RTSCameraController cameraMgr = RTSCameraController.get();
         if (!cameraMgr.isActive()) return;
 
         Minecraft mc = Minecraft.getInstance();
@@ -115,7 +117,7 @@ public class RTSInputHandler {
         RTSSelectionManager selMgr = RTSSelectionManager.get();
         double mx = getScaledMouseX(mc);
         double my = getScaledMouseY(mc);
-        if (selMgr.isLeftDragging())  selMgr.updateLeftDrag((float) mx, (float) my);
+        if (selMgr.isDragging())  selMgr.updateDrag((float) mx, (float) my);
         if (selMgr.isRightDragging()) selMgr.updateRightDrag((float) mx, (float) my);
 
         // 悬停实体检测（每 3 tick 一次）
@@ -123,9 +125,9 @@ public class RTSInputHandler {
             HitResult hit = MouseRayCaster.pickFromMouse(
                     mc.mouseHandler.xpos(), mc.mouseHandler.ypos(), 1024.0);
             if (hit.getType() == HitResult.Type.ENTITY) {
-                selMgr.setHoveredEntityId(((EntityHitResult) hit).getEntity().getId());
+                CameraLibAPI.get().setHoveredEntityId(((EntityHitResult) hit).getEntity().getId());
             } else {
-                selMgr.setHoveredEntityId(-1);
+                CameraLibAPI.get().setHoveredEntityId(-1);
             }
         }
 
@@ -140,13 +142,13 @@ public class RTSInputHandler {
         if (mc.options.keyShift.isDown()) moveY -= 1;
 
         float rotateYaw = 0;
-        boolean isRotateKeyDown = CameraLibKeyMappings.RTS_CAMERA_ROTATE.isDown();
+        boolean isRotateKeyDown = CameraLibKeyMappings.CAMERA_ROTATE.isDown();
 
         if (isRotateKeyDown) {
             double centerX = mc.getWindow().getScreenWidth() / 2.0;
             double deltaX  = mc.mouseHandler.xpos() - centerX;
 
-            if (cameraMgr.getCameraStyle() == RTSCameraManager.CameraStyle.RTS) {
+            if (cameraMgr.getCameraStyle() == RTSCameraController.CameraStyle.RTS) {
                 // RTS 风格：鼠标偏移 > 40px 时触发 90° 阶跃旋转
                 if (Math.abs(deltaX) > 40.0) {
                     cameraMgr.snapYaw(deltaX > 0 ? 90f : -90f);
@@ -171,14 +173,14 @@ public class RTSInputHandler {
         }
 
         if (moveX != 0 || moveZ != 0 || moveY != 0 || rotateYaw != 0) {
-            cameraMgr.handleInput(moveX, moveZ, rotateYaw, moveY);
+            cameraMgr.handleInput(moveX, moveZ, rotateYaw, 0, moveY, mc.options.keySprint.isDown());
         }
     }
 
     // ── 私有辅助方法 ──────────────────────────────────────────────────────────
 
     /** 鼠标靠近屏幕上下边缘时自动调整俯仰角 */
-    private static void handleEdgePitch(Minecraft mc, RTSCameraManager manager) {
+    private static void handleEdgePitch(Minecraft mc, RTSCameraController manager) {
         double mouseY = mc.mouseHandler.ypos();
         double height = mc.getWindow().getHeight();
         if (mouseY < CameraLibConfig.edgePanThreshold) {
@@ -192,8 +194,9 @@ public class RTSInputHandler {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
 
-        RTSSelectionManager.SelectionRect rect = RTSSelectionManager.get().getLeftRect();
+        var rect = RTSSelectionManager.get().getSelectionRect();
         List<Entity> results = new ArrayList<>();
+        IRTSInteractionDelegate delegate = CameraLibAPI.get().getDelegate();
 
         // 判断是点选还是框选
         if (rect.width() < 2 && rect.height() < 2) {
@@ -202,7 +205,7 @@ public class RTSInputHandler {
                     mc.mouseHandler.xpos(), mc.mouseHandler.ypos(), 1024.0);
             if (hit.getType() == HitResult.Type.ENTITY) {
                 Entity e = ((EntityHitResult) hit).getEntity();
-                if (CameraLibAPI.get().delegate().isSelectable(e)) {
+                if (delegate.isSelectable(e)) {
                     results.add(e);
                 }
             }
@@ -210,7 +213,7 @@ public class RTSInputHandler {
             // 框选
             Vec3 camPos = mc.gameRenderer.getMainCamera().getPosition();
             for (Entity entity : mc.level.entitiesForRendering()) {
-                if (CameraLibAPI.get().delegate().isSelectable(entity)) {
+                if (delegate.isSelectable(entity)) {
                     if (ScreenProjector.isAABBInScreenRect(entity.getBoundingBox(), rect, camPos)) {
                         results.add(entity);
                     }
@@ -219,30 +222,29 @@ public class RTSInputHandler {
         }
 
         // 抛出事件给主模组处理
-        MinecraftForge.EVENT_BUS.post(new RTSBoxSelectEvent(mc.player, results));
+        MinecraftForge.EVENT_BUS.post(new RTSBoxSelectEvent(results));
     }
 
     private static void performRightAction() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
 
-        RTSSelectionManager.SelectionRect rect = RTSSelectionManager.get().getRightRect();
+        var rect = RTSSelectionManager.get().getRightDragRect();
 
         if (rect.width() < 2 && rect.height() < 2) {
             HitResult hit = MouseRayCaster.pickFromMouse(
                     mc.mouseHandler.xpos(), mc.mouseHandler.ypos(), 1024.0);
-            MinecraftForge.EVENT_BUS.post(new RTSRightClickEvent(mc.player, false, null, hit));
+            MinecraftForge.EVENT_BUS.post(new RTSRightClickEvent(hit));
         } else {
-            List<Entity> draggedEnemies = new ArrayList<>();
+            List<Entity> candidates = new ArrayList<>();
             Vec3 camPos = mc.gameRenderer.getMainCamera().getPosition();
             for (Entity entity : mc.level.entitiesForRendering()) {
-                if (CameraLibAPI.get().delegate().isEnemy(entity)) {
-                    if (ScreenProjector.isAABBInScreenRect(entity.getBoundingBox(), rect, camPos)) {
-                        draggedEnemies.add(entity);
-                    }
+                if (!(entity instanceof LivingEntity) || !entity.isAlive() || entity == mc.player) continue;
+                if (ScreenProjector.isAABBInScreenRect(entity.getBoundingBox(), rect, camPos)) {
+                    candidates.add(entity);
                 }
             }
-            MinecraftForge.EVENT_BUS.post(new RTSRightClickEvent(mc.player, true, draggedEnemies, null));
+            MinecraftForge.EVENT_BUS.post(new RTSRightClickEvent(candidates));
         }
     }
 

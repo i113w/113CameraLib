@@ -1,6 +1,5 @@
 package com.i113w.camera_lib.math;
 
-import com.i113w.camera_lib.selection.RTSSelectionManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -8,6 +7,11 @@ import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
 public class ScreenProjector {
+    public record ScreenRect(float x, float y, float width, float height) {
+        public boolean contains(float px, float py) {
+            return px >= x && px <= x + width && py >= y && py <= y + height;
+        }
+    }
 
     /**
      * 判断实体的 AABB（8 个顶点中至少有 1 个）是否落在屏幕选框内。
@@ -17,11 +21,10 @@ public class ScreenProjector {
      * @param rect   屏幕选框（GUI scaled 像素坐标）
      * @param camPos 相机世界坐标（用于平移到相机空间）
      */
-    public static boolean isAABBInScreenRect(AABB aabb,
-                                             RTSSelectionManager.SelectionRect rect,
-                                             Vec3 camPos) {
-        Matrix4f view = MatrixCache.VIEW_MATRIX;
-        Matrix4f proj = MatrixCache.PROJ_MATRIX;
+    public static boolean isAABBInScreenRect(AABB aabb, ScreenRect rect, Vec3 camPos) {
+        if (!MatrixCache.isValid()) return false;
+        Matrix4f view = MatrixCache.getModelViewMatrix();
+        Matrix4f proj = MatrixCache.getProjectionMatrix();
 
         Vec3[] corners = {
                 new Vec3(aabb.minX, aabb.minY, aabb.minZ), new Vec3(aabb.minX, aabb.maxY, aabb.minZ),

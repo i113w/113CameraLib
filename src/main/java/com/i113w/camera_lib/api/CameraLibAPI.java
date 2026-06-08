@@ -1,20 +1,16 @@
 package com.i113w.camera_lib.api;
 
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.Entity;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.HashSet;
+import java.util.Set;
 
 public final class CameraLibAPI {
     private static final CameraLibAPI INSTANCE = new CameraLibAPI();
 
-    // 默认提供一个空实现（No-Op），防止在未注册时调用引发 NPE
-    private final AtomicReference<IRTSInteractionDelegate> delegate = new AtomicReference<>(new IRTSInteractionDelegate() {
-        @Override public boolean isSelectable(Entity entity) { return false; }
-        @Override public boolean isEnemy(Entity entity) { return false; }
-        @Override public @Nullable ResourceLocation getCursorTexture(CursorType type) { return null; }
-    });
+    private IRTSInteractionDelegate interactionDelegate = IRTSInteractionDelegate.DEFAULT;
+
+    // 供渲染层使用的高亮缓存（替代原 SelectionManager 的职责）
+    private final Set<Integer> selectedEntityIds = new HashSet<>();
+    private int hoveredEntityId = -1;
 
     private CameraLibAPI() {}
 
@@ -22,14 +18,39 @@ public final class CameraLibAPI {
         return INSTANCE;
     }
 
-    /** 供主模组在初始化阶段（如 FMLClientSetupEvent）注册自己的委托 */
-    public void registerDelegate(IRTSInteractionDelegate newDelegate) {
-        if (newDelegate != null) {
-            delegate.set(newDelegate);
+    // 供主模组在初始化阶段注册自己的委托
+    public void setInteractionDelegate(IRTSInteractionDelegate delegate) {
+        if (delegate != null) {
+            this.interactionDelegate = delegate;
         }
     }
 
-    public IRTSInteractionDelegate delegate() {
-        return delegate.get();
+    public IRTSInteractionDelegate getDelegate() {
+        return interactionDelegate;
+    }
+
+     // 主模组同步当前的选区给库，以便库渲染白色高亮边框
+    public void setSelectedEntities(Set<Integer> entityIds) {
+        this.selectedEntityIds.clear();
+        if (entityIds != null) {
+            this.selectedEntityIds.addAll(entityIds);
+        }
+    }
+
+    public Set<Integer> getSelectedEntities() {
+        return new HashSet<>(selectedEntityIds);
+    }
+
+    public void setHoveredEntityId(int id) {
+        this.hoveredEntityId = id;
+    }
+
+    public int getHoveredEntityId() {
+        return hoveredEntityId;
+    }
+
+    public void clearSelection() {
+        this.selectedEntityIds.clear();
+        this.hoveredEntityId = -1;
     }
 }

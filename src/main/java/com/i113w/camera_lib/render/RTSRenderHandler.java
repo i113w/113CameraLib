@@ -2,9 +2,7 @@ package com.i113w.camera_lib.render;
 
 import com.i113w.camera_lib.CameraLib;
 import com.i113w.camera_lib.api.CameraLibAPI;
-import com.i113w.camera_lib.api.IRTSInteractionDelegate;
-import com.i113w.camera_lib.camera.RTSCameraManager;
-import com.i113w.camera_lib.math.MatrixCache;
+import com.i113w.camera_lib.camera.RTSCameraController;
 import com.i113w.camera_lib.selection.RTSSelectionManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -31,8 +29,8 @@ public class RTSRenderHandler {
 
     @SubscribeEvent
     public static void onComputeFov(ViewportEvent.ComputeFov event) {
-        if (RTSCameraManager.get().isActive()
-                && RTSCameraManager.get().getCameraStyle() == RTSCameraManager.CameraStyle.RTS) {
+        if (RTSCameraController.get().isActive()
+                && RTSCameraController.get().getCameraStyle() == RTSCameraController.CameraStyle.RTS) {
             event.setFOV(25.0);
         }
     }
@@ -41,7 +39,7 @@ public class RTSRenderHandler {
 
     @SubscribeEvent
     public static void onRenderHand(RenderHandEvent event) {
-        if (RTSCameraManager.get().isActive()) {
+        if (RTSCameraController.get().isActive()) {
             event.setCanceled(true);
         }
     }
@@ -50,7 +48,7 @@ public class RTSRenderHandler {
 
     @SubscribeEvent
     public static void onRenderGuiOverlayPre(RenderGuiOverlayEvent.Pre event) {
-        if (!RTSCameraManager.get().isActive()) return;
+        if (!RTSCameraController.get().isActive()) return;
 
         ResourceLocation id = event.getOverlay().id();
         if (id.equals(VanillaGuiOverlay.CHAT_PANEL.id())    ||
@@ -68,16 +66,15 @@ public class RTSRenderHandler {
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
-        if (!RTSCameraManager.get().isActive()) return;
+        if (!RTSCameraController.get().isActive()) return;
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
 
         renderSelectedOutlines(event);
     }
 
     private static void renderSelectedOutlines(RenderLevelStageEvent event) {
-        RTSSelectionManager selMgr = RTSSelectionManager.get();
-        Set<Integer> selectedIds = selMgr.getSelectedIds();
-        int hoveredId = selMgr.getHoveredEntityId();
+        Set<Integer> selectedIds = CameraLibAPI.get().getSelectedEntities();
+        int hoveredId = CameraLibAPI.get().getHoveredEntityId();
 
         if (selectedIds.isEmpty() && hoveredId == -1) return;
 
@@ -127,13 +124,13 @@ public class RTSRenderHandler {
 
     @SubscribeEvent
     public static void onRenderGui(RenderGuiEvent.Post event) {
-        if (!RTSCameraManager.get().isActive()) return;
+        if (!RTSCameraController.get().isActive()) return;
 
         RTSSelectionManager selMgr = RTSSelectionManager.get();
 
         // 渲染左键选择框 (绿色)
-        if (selMgr.isLeftDragging()) {
-            var rect = selMgr.getLeftRect();
+        if (selMgr.isDragging()) {
+            var rect = selMgr.getSelectionRect();
             event.getGuiGraphics().fill(
                     (int) rect.x(), (int) rect.y(),
                     (int)(rect.x() + rect.width()), (int)(rect.y() + rect.height()),
@@ -146,7 +143,7 @@ public class RTSRenderHandler {
 
         // 渲染右键动作框 (红色)
         if (selMgr.isRightDragging()) {
-            var rect = selMgr.getRightRect();
+            var rect = selMgr.getRightDragRect();
             event.getGuiGraphics().fill(
                     (int) rect.x(), (int) rect.y(),
                     (int)(rect.x() + rect.width()), (int)(rect.y() + rect.height()),
@@ -163,32 +160,17 @@ public class RTSRenderHandler {
 
     private static void renderCustomCursor(RenderGuiEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
-        IRTSInteractionDelegate delegate = CameraLibAPI.get().delegate();
+        int hoveredId = CameraLibAPI.get().getHoveredEntityId();
+        Entity hoveredEntity = hoveredId != -1 && mc.level != null ? mc.level.getEntity(hoveredId) : null;
+        ResourceLocation cursorTex = CameraLibAPI.get().getDelegate()
+                .getCursorIcon(hoveredEntity, RTSSelectionManager.get().isRightDragging());
+        if (cursorTex == null) return;
 
-        IRTSInteractionDelegate.CursorType type = IRTSInteractionDelegate.CursorType.DEFAULT;
+        double mx = mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth() / mc.getWindow().getScreenWidth();
+        double my = mc.mouseHandler.ypos() * mc.getWindow().getGuiScaledHeight() / mc.getWindow().getScreenHeight();
 
-        if (RTSSelectionManager.get().isRightDragging()) {
-            type = IRTSInteractionDelegate.CursorType.ATTACK;
-        } else {
-            int hoveredId = RTSSelectionManager.get().getHoveredEntityId();
-            if (hoveredId != -1 && mc.level != null) {
-                Entity hovered = mc.level.getEntity(hoveredId);
-                if (delegate.isEnemy(hovered)) {
-                    type = IRTSInteractionDelegate.CursorType.ATTACK;
-                } else if (delegate.isSelectable(hovered)) {
-                    type = IRTSInteractionDelegate.CursorType.ALLY;
-                }
-            }
-        }
-
-        ResourceLocation cursorTex = delegate.getCursorTexture(type);
-        if (cursorTex != null) {
-            double mx = mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth()  / mc.getWindow().getScreenWidth();
-            double my = mc.mouseHandler.ypos() * mc.getWindow().getGuiScaledHeight() / mc.getWindow().getScreenHeight();
-
-            RenderSystem.enableBlend();
-            event.getGuiGraphics().blit(cursorTex, (int) mx, (int) my, 0, 0, 16, 16, 16, 16);
-            RenderSystem.disableBlend();
-        }
+        RenderSystem.enableBlend();
+        event.getGuiGraphics().blit(cursorTex, (int) mx, (int) my, 0, 0, 16, 16, 16, 16);
+        RenderSystem.disableBlend();
     }
 }

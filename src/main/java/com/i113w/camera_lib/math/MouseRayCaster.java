@@ -16,7 +16,7 @@ public class MouseRayCaster {
         Minecraft mc = Minecraft.getInstance();
         Camera camera = mc.gameRenderer.getMainCamera();
 
-        if (camera == null || mc.level == null) {
+        if (camera == null || mc.level == null || !MatrixCache.isValid()) {
             return BlockHitResult.miss(Vec3.ZERO, Direction.UP, BlockPos.ZERO);
         }
 
@@ -26,8 +26,8 @@ public class MouseRayCaster {
         float ndcX = (float)(2.0 * mouseX / winW  - 1.0);
         float ndcY = (float)(1.0 - 2.0 * mouseY / winH);
 
-        Matrix4f view = MatrixCache.VIEW_MATRIX;
-        Matrix4f proj = MatrixCache.PROJ_MATRIX;
+        Matrix4f view = MatrixCache.getModelViewMatrix();
+        Matrix4f proj = MatrixCache.getProjectionMatrix();
 
         Vec3 eyePos = camera.getPosition();
         Vec3 rayDir = unprojectRay(ndcX, ndcY, view, proj);
