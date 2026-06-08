@@ -19,32 +19,30 @@ public class MouseRayCaster {
             return BlockHitResult.miss(Vec3.ZERO, Direction.UP, BlockPos.ZERO);
         }
 
-        Vec3 eyePos = camera.getPosition();
-        Vec3 rayDir = calculateRayDirection(mouseX, mouseY);
-        Vec3 endPos = eyePos.add(rayDir.scale(pickRange));
+        Ray ray = calculateRay(camera, mouseX, mouseY, pickRange);
 
         HitResult blockHit = mc.level.clip(new ClipContext(
-                eyePos, endPos,
+                ray.start(), ray.end(),
                 ClipContext.Block.COLLIDER,
                 ClipContext.Fluid.NONE,
                 camera.getEntity()
         ));
 
-        double distToBlock = blockHit.getLocation().distanceToSqr(eyePos);
-        Vec3 entityCheckEnd = blockHit.getType() != HitResult.Type.MISS ? blockHit.getLocation() : endPos;
-        AABB searchBox = new AABB(eyePos, endPos).inflate(1.0);
+        double distToBlock = blockHit.getLocation().distanceToSqr(ray.start());
+        Vec3 entityCheckEnd = blockHit.getType() != HitResult.Type.MISS ? blockHit.getLocation() : ray.end();
+        AABB searchBox = new AABB(ray.start(), ray.end()).inflate(1.0);
 
         EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(
                 mc.level,
                 camera.getEntity(),
-                eyePos,
+                ray.start(),
                 entityCheckEnd,
                 searchBox,
-                (e) -> !e.isSpectator() && e.isPickable()
+                (e) -> e != camera.getEntity() && !e.isSpectator() && e.isPickable()
         );
 
         if (entityHit != null) {
-            double distToEntity = eyePos.distanceToSqr(entityHit.getLocation());
+            double distToEntity = ray.start().distanceToSqr(entityHit.getLocation());
             if (distToEntity < distToBlock) {
                 return entityHit;
             }
@@ -52,7 +50,7 @@ public class MouseRayCaster {
         return blockHit;
     }
 
-    private static Vec3 calculateRayDirection(double mouseX, double mouseY) {
+    private static Ray calculateRay(Camera camera, double mouseX, double mouseY, double pickRange) {
         Minecraft mc = Minecraft.getInstance();
         int windowWidth = mc.getWindow().getWidth();
         int windowHeight = mc.getWindow().getHeight();
@@ -73,10 +71,16 @@ public class MouseRayCaster {
         if (nearPoint.w != 0) nearPoint.div(nearPoint.w);
         if (farPoint.w != 0) farPoint.div(farPoint.w);
 
-        return new Vec3(
+        Vec3 cameraPos = camera.getPosition();
+        Vec3 nearPos = cameraPos.add(nearPoint.x(), nearPoint.y(), nearPoint.z());
+        Vec3 direction = new Vec3(
                 farPoint.x() - nearPoint.x(),
                 farPoint.y() - nearPoint.y(),
                 farPoint.z() - nearPoint.z()
         ).normalize();
+
+        return new Ray(nearPos, nearPos.add(direction.scale(pickRange)));
     }
+
+    private record Ray(Vec3 start, Vec3 end) {}
 }

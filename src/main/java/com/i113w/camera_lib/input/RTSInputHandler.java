@@ -47,7 +47,12 @@ public class RTSInputHandler {
 
     @SubscribeEvent
     public static void onComputeFov(ViewportEvent.ComputeFov event) {
-        if (RTSCameraController.get().isActive() && RTSCameraController.get().getCameraStyle() == RTSCameraController.CameraStyle.RTS) {
+        RTSCameraController controller = RTSCameraController.get();
+        if (!controller.isActive()) return;
+        if (controller.getCameraStyle() == RTSCameraController.CameraStyle.ORTHOGRAPHIC) {
+            controller.updateShaderFallback();
+        }
+        if (controller.getCameraStyle() == RTSCameraController.CameraStyle.RTS) {
             event.setFOV(25.0);
         }
     }
@@ -96,7 +101,7 @@ public class RTSInputHandler {
         if (isRotateKeyDown) {
             double centerX = mc.getWindow().getScreenWidth() / 2.0;
             double deltaX = mc.mouseHandler.xpos() - centerX;
-            if (cameraController.getCameraStyle() == RTSCameraController.CameraStyle.RTS) {
+            if (cameraController.isGroundFocusedStyle()) {
                 if (Math.abs(deltaX) > 40.0) {
                     // 读取配置的吸附角度
                     float step = deltaX > 0 ? CameraLibConfig.rtsSnapAngle : -CameraLibConfig.rtsSnapAngle;
@@ -232,19 +237,20 @@ public class RTSInputHandler {
         var rect = RTSSelectionManager.get().getSelectionRect();
         List<Entity> candidates = new ArrayList<>();
         Vec3 camPos = mc.gameRenderer.getMainCamera().getPosition();
+        Vec3 selectionCenter = RTSCameraController.get().isGroundFocusedStyle() ? RTSCameraController.get().getFocusPosition() : camPos;
         IRTSInteractionDelegate delegate = CameraLibAPI.get().getDelegate();
 
         if (rect.width() < 2 && rect.height() < 2) {
             HitResult hit = MouseRayCaster.pickFromMouse(mc.mouseHandler.xpos(), mc.mouseHandler.ypos(), 1024.0);
             if (hit.getType() == HitResult.Type.ENTITY) {
                 Entity target = ((EntityHitResult) hit).getEntity();
-                if (isEntityValidForCamera(target, camPos) && delegate.isSelectable(target)) {
+                if (isEntityValidForCamera(target, selectionCenter) && delegate.isSelectable(target)) {
                     candidates.add(target);
                 }
             }
         } else {
             for (Entity entity : mc.level.entitiesForRendering()) {
-                if (!isEntityValidForCamera(entity, camPos)) continue;
+                if (!isEntityValidForCamera(entity, selectionCenter)) continue;
                 if (ScreenProjector.isAABBInScreenRect(entity.getBoundingBox(), rect, camPos)) {
                     if (delegate.isSelectable(entity)) {
                         candidates.add(entity);

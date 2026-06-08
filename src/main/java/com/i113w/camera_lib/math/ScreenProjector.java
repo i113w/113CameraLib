@@ -31,8 +31,7 @@ public class ScreenProjector {
 
         for (Vec3 corner : corners) {
             Vector4f screenPos = project(corner, view, proj, camPos);
-            // w > 0 表示顶点在摄像机前方（透视除法前的原始 w 保存于此）
-            if (screenPos.w() > 0 && rect.contains(screenPos.x(), screenPos.y())) {
+            if (screenPos.z() >= -1.0f && screenPos.z() <= 1.0f && rect.contains(screenPos.x(), screenPos.y())) {
                 return true;
             }
         }
@@ -52,7 +51,6 @@ public class ScreenProjector {
         pos.mul(view);
         pos.mul(proj);
 
-        // 3. 保存裁剪空间 w，用于判断顶点是否在摄像机前方
         float clipW = pos.w();
 
         // 4. 透视除法，变换到 NDC 空间 (-1, 1)
@@ -67,7 +65,7 @@ public class ScreenProjector {
 
         pos.x = (pos.x() * 0.5f + 0.5f) * winW;
         pos.y = (1.0f - (pos.y() * 0.5f + 0.5f)) * winH;
-        // 将原始裁剪空间 w 写回，供调用方用于前/后方判断
+        // 保留裁剪空间 w，z 保持为 NDC 深度用于正交/透视通用可见性判断
         pos.w = clipW;
 
         return pos;

@@ -1,4 +1,5 @@
 {
   "key.categories.camera_lib": "113's Camera Lib",
-  "key.camera_lib.rotate": "Rotate Camera"
+  "key.camera_lib.rotate": "Rotate Camera",
+  "message.i113w_camera_lib.orthographic_shader_fallback": "Shader pack detected. Orthographic Camera has fallen back to RTS pseudo-orthographic mode."
 }
