@@ -29,8 +29,12 @@ public class RTSRenderHandler {
 
     @SubscribeEvent
     public static void onComputeFov(ViewportEvent.ComputeFov event) {
-        if (RTSCameraController.get().isActive()
-                && RTSCameraController.get().getCameraStyle() == RTSCameraController.CameraStyle.RTS) {
+        RTSCameraController controller = RTSCameraController.get();
+        if (!controller.isActive()) return;
+        if (controller.getCameraStyle() == RTSCameraController.CameraStyle.ORTHOGRAPHIC) {
+            controller.updateShaderFallback();
+        }
+        if (controller.getCameraStyle() == RTSCameraController.CameraStyle.RTS) {
             event.setFOV(25.0);
         }
     }

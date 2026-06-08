@@ -148,10 +148,11 @@ public class RTSInputHandler {
             double centerX = mc.getWindow().getScreenWidth() / 2.0;
             double deltaX  = mc.mouseHandler.xpos() - centerX;
 
-            if (cameraMgr.getCameraStyle() == RTSCameraController.CameraStyle.RTS) {
+            if (cameraMgr.isGroundFocusedStyle()) {
                 // RTS 风格：鼠标偏移 > 40px 时触发 90° 阶跃旋转
                 if (Math.abs(deltaX) > 40.0) {
-                    cameraMgr.snapYaw(deltaX > 0 ? 90f : -90f);
+                    float step = deltaX > 0 ? CameraLibConfig.rtsSnapAngle : -CameraLibConfig.rtsSnapAngle;
+                    cameraMgr.snapYaw(step);
                     GLFW.glfwSetCursorPos(
                             mc.getWindow().getWindow(),
                             centerX,
@@ -192,11 +193,15 @@ public class RTSInputHandler {
 
     private static void performLeftSelection() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || mc.player == null) return;
+        if (mc.level == null) return;
 
         var rect = RTSSelectionManager.get().getSelectionRect();
         List<Entity> results = new ArrayList<>();
         IRTSInteractionDelegate delegate = CameraLibAPI.get().getDelegate();
+        Vec3 camPos = mc.gameRenderer.getMainCamera().getPosition();
+        Vec3 selectionCenter = RTSCameraController.get().isGroundFocusedStyle()
+                ? RTSCameraController.get().getFocusPosition()
+                : camPos;
 
         // 判断是点选还是框选
         if (rect.width() < 2 && rect.height() < 2) {
@@ -205,18 +210,17 @@ public class RTSInputHandler {
                     mc.mouseHandler.xpos(), mc.mouseHandler.ypos(), 1024.0);
             if (hit.getType() == HitResult.Type.ENTITY) {
                 Entity e = ((EntityHitResult) hit).getEntity();
-                if (delegate.isSelectable(e)) {
+                if (isEntityValidForCamera(e, selectionCenter) && delegate.isSelectable(e)) {
                     results.add(e);
                 }
             }
         } else {
             // 框选
-            Vec3 camPos = mc.gameRenderer.getMainCamera().getPosition();
             for (Entity entity : mc.level.entitiesForRendering()) {
-                if (delegate.isSelectable(entity)) {
-                    if (ScreenProjector.isAABBInScreenRect(entity.getBoundingBox(), rect, camPos)) {
-                        results.add(entity);
-                    }
+                if (!isEntityValidForCamera(entity, selectionCenter)) continue;
+                if (delegate.isSelectable(entity)
+                        && ScreenProjector.isAABBInScreenRect(entity.getBoundingBox(), rect, camPos)) {
+                    results.add(entity);
                 }
             }
         }
@@ -246,6 +250,19 @@ public class RTSInputHandler {
             }
             MinecraftForge.EVENT_BUS.post(new RTSRightClickEvent(candidates));
         }
+    }
+
+    private static boolean isEntityValidForCamera(Entity entity, Vec3 focusPos) {
+        if (!(entity instanceof LivingEntity living) || !living.isAlive()) return false;
+        if (entity == Minecraft.getInstance().player) return false;
+
+        double verticalDist = Math.abs(entity.getY() - focusPos.y);
+        if (verticalDist > 250.0) return false;
+
+        double horizontalDistSqr = entity.position().distanceToSqr(focusPos.x, entity.getY(), focusPos.z);
+        if (horizontalDistSqr > 256.0 * 256.0) return false;
+
+        return entity.getY() >= -64 && entity.getY() <= 320;
     }
 
     private static double getScaledMouseX(Minecraft mc) {

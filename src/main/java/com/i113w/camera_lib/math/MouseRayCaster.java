@@ -6,7 +6,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.phys.*;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
@@ -20,56 +24,69 @@ public class MouseRayCaster {
             return BlockHitResult.miss(Vec3.ZERO, Direction.UP, BlockPos.ZERO);
         }
 
-        int winW = mc.getWindow().getWidth();
-        int winH = mc.getWindow().getHeight();
-
-        float ndcX = (float)(2.0 * mouseX / winW  - 1.0);
-        float ndcY = (float)(1.0 - 2.0 * mouseY / winH);
-
-        Matrix4f view = MatrixCache.getModelViewMatrix();
-        Matrix4f proj = MatrixCache.getProjectionMatrix();
-
-        Vec3 eyePos = camera.getPosition();
-        Vec3 rayDir = unprojectRay(ndcX, ndcY, view, proj);
-        Vec3 endPos = eyePos.add(rayDir.scale(pickRange));
+        Ray ray = calculateRay(camera, mouseX, mouseY, pickRange);
 
         HitResult blockHit = mc.level.clip(new ClipContext(
-                eyePos, endPos,
-                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE,
+                ray.start(), ray.end(),
+                ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE,
                 camera.getEntity()
         ));
 
-        double distBlock = blockHit.getLocation().distanceToSqr(eyePos);
-
-        Vec3 entityEnd = blockHit.getType() != HitResult.Type.MISS ? blockHit.getLocation() : endPos;
-        AABB box = new AABB(eyePos, entityEnd).inflate(1.0);
+        double distToBlock = blockHit.getLocation().distanceToSqr(ray.start());
+        Vec3 entityCheckEnd = blockHit.getType() != HitResult.Type.MISS ? blockHit.getLocation() : ray.end();
+        AABB searchBox = new AABB(ray.start(), ray.end()).inflate(1.0);
 
         EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(
-                mc.level, camera.getEntity(), eyePos, entityEnd, box,
-                e -> !e.isSpectator() && e.isPickable()
+                mc.level,
+                camera.getEntity(),
+                ray.start(),
+                entityCheckEnd,
+                searchBox,
+                e -> e != camera.getEntity() && !e.isSpectator() && e.isPickable()
         );
 
-        if (entityHit != null && eyePos.distanceToSqr(entityHit.getLocation()) < distBlock) {
-            return entityHit;
+        if (entityHit != null) {
+            double distToEntity = ray.start().distanceToSqr(entityHit.getLocation());
+            if (distToEntity < distToBlock) {
+                return entityHit;
+            }
         }
 
         return blockHit;
     }
 
-    private static Vec3 unprojectRay(float ndcX, float ndcY, Matrix4f view, Matrix4f proj) {
-        Matrix4f mvp = new Matrix4f(proj).mul(view);
-        Matrix4f invMVP = mvp.invert(new Matrix4f());
+    private static Ray calculateRay(Camera camera, double mouseX, double mouseY, double pickRange) {
+        Minecraft mc = Minecraft.getInstance();
+        int windowWidth = mc.getWindow().getWidth();
+        int windowHeight = mc.getWindow().getHeight();
 
-        Vector4f near4 = new Vector4f(ndcX, ndcY, -1f, 1f).mul(invMVP);
-        Vector4f far4  = new Vector4f(ndcX, ndcY,  1f, 1f).mul(invMVP);
+        float ndcX = (float) (2.0 * mouseX / windowWidth - 1.0);
+        float ndcY = (float) (1.0 - 2.0 * mouseY / windowHeight);
 
-        if (near4.w() != 0f) near4.div(near4.w());
-        if (far4.w()  != 0f) far4.div(far4.w());
+        Matrix4f invMVP = new Matrix4f(MatrixCache.getProjectionMatrix());
+        invMVP.mul(MatrixCache.getModelViewMatrix());
+        invMVP.invert();
 
-        return new Vec3(
-                far4.x() - near4.x(),
-                far4.y() - near4.y(),
-                far4.z() - near4.z()
+        Vector4f nearPoint = new Vector4f(ndcX, ndcY, -1.0f, 1.0f);
+        Vector4f farPoint = new Vector4f(ndcX, ndcY, 1.0f, 1.0f);
+
+        nearPoint.mul(invMVP);
+        farPoint.mul(invMVP);
+
+        if (nearPoint.w() != 0f) nearPoint.div(nearPoint.w());
+        if (farPoint.w() != 0f) farPoint.div(farPoint.w());
+
+        Vec3 cameraPos = camera.getPosition();
+        Vec3 nearPos = cameraPos.add(nearPoint.x(), nearPoint.y(), nearPoint.z());
+        Vec3 direction = new Vec3(
+                farPoint.x() - nearPoint.x(),
+                farPoint.y() - nearPoint.y(),
+                farPoint.z() - nearPoint.z()
         ).normalize();
+
+        return new Ray(nearPos, nearPos.add(direction.scale(pickRange)));
     }
+
+    private record Ray(Vec3 start, Vec3 end) {}
 }

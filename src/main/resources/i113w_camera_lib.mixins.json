@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.i113w.camera_lib.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "i113w_camera_lib.refmap.json",
+  "client": [
+    "GameRendererMixin",
+    "LevelRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
