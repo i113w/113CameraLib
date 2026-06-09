@@ -20,7 +20,7 @@ public class RTSCameraController {
     }
 
     private boolean isActive = false;
-    private CameraStyle currentStyle = CameraStyle.RTS;
+    private CameraStyle currentStyle = CameraStyle.ORTHOGRAPHIC;
 
     private RTSCameraEntity cameraEntity;
     private Entity originalViewEntity;
@@ -45,7 +45,7 @@ public class RTSCameraController {
         this.cameraEntity = null;
         this.originalViewEntity = null;
         this.isActive = false;
-        this.currentStyle = CameraStyle.RTS;
+        this.currentStyle = CameraStyle.ORTHOGRAPHIC;
         this.targetPos = Vec3.ZERO;
         this.targetYaw = 0f;
         this.targetPitch = 40f;
@@ -57,7 +57,6 @@ public class RTSCameraController {
         if (isActive) {
             exitRTS();
         } else {
-            this.currentStyle = CameraStyle.RTS;
             enterRTS();
         }
     }
