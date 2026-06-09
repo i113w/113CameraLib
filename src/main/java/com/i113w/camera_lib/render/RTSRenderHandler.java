@@ -26,6 +26,7 @@ public class RTSRenderHandler {
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
         if (!RTSCameraController.get().isActive()) return;
+        if (Minecraft.getInstance().options.hideGui) return;
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
             renderSelectedOutlines(event);
         }
@@ -34,6 +35,7 @@ public class RTSRenderHandler {
     @SubscribeEvent
     public static void onRenderGui(RenderGuiEvent.Post event) {
         if (!RTSCameraController.get().isActive()) return;
+        if (Minecraft.getInstance().options.hideGui) return;
         RTSSelectionManager manager = RTSSelectionManager.get();
 
         if (manager.isDragging()) {

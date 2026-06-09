@@ -11,10 +11,11 @@ public interface IRTSInteractionDelegate {
     boolean isSelectable(Entity entity);
 
     /**
-     * 获取当前鼠标悬停状态下应该显示的光标贴图
+     * 获取当前鼠标悬停状态下应该显示的光标贴图，返回 null 时隐藏库自定义光标。
      * @param hoveredEntity 当前鼠标悬停的实体（可能为 null）
      * @param isAttackDragging 是否正在右键拉红框
      */
+    @Nullable
     ResourceLocation getCursorIcon(@Nullable Entity hoveredEntity, boolean isAttackDragging);
 
     // 默认实现
@@ -22,8 +23,8 @@ public interface IRTSInteractionDelegate {
         @Override
         public boolean isSelectable(Entity entity) { return true; }
         @Override
-        public ResourceLocation getCursorIcon(@Nullable Entity hoveredEntity, boolean isAttackDragging) {
-            return ResourceLocation.withDefaultNamespace("textures/gui/crosshairs.png"); // 默认光标
+        public @Nullable ResourceLocation getCursorIcon(@Nullable Entity hoveredEntity, boolean isAttackDragging) {
+            return null;
         }
     };
 }

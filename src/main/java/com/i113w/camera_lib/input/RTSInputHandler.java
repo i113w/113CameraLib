@@ -6,6 +6,7 @@ import com.i113w.camera_lib.api.IRTSInteractionDelegate;
 import com.i113w.camera_lib.api.event.RTSBoxSelectEvent;
 import com.i113w.camera_lib.api.event.RTSRightClickEvent;
 import com.i113w.camera_lib.camera.RTSCameraController;
+import com.i113w.camera_lib.client.NativeCursorController;
 import com.i113w.camera_lib.config.CameraLibConfig;
 import com.i113w.camera_lib.math.MouseRayCaster;
 import com.i113w.camera_lib.math.ScreenProjector;
@@ -49,9 +50,6 @@ public class RTSInputHandler {
     public static void onComputeFov(ViewportEvent.ComputeFov event) {
         RTSCameraController controller = RTSCameraController.get();
         if (!controller.isActive()) return;
-        if (controller.getCameraStyle() == RTSCameraController.CameraStyle.ORTHOGRAPHIC) {
-            controller.updateShaderFallback();
-        }
         if (controller.getCameraStyle() == RTSCameraController.CameraStyle.RTS) {
             event.setFOV(25.0);
         }
@@ -64,16 +62,20 @@ public class RTSInputHandler {
 
     @SubscribeEvent
     public static void onRenderGuiLayer(RenderGuiLayerEvent.Pre event) {
-        if (RTSCameraController.get().isActive()) {
-            ResourceLocation layerName = event.getName();
-            if (!VanillaGuiLayers.CHAT.equals(layerName) &&
-                    !VanillaGuiLayers.DEBUG_OVERLAY.equals(layerName) &&
-                    !VanillaGuiLayers.TAB_LIST.equals(layerName) &&
-                    !VanillaGuiLayers.OVERLAY_MESSAGE.equals(layerName) &&
-                    !VanillaGuiLayers.TITLE.equals(layerName) &&
-                    !VanillaGuiLayers.SUBTITLE_OVERLAY.equals(layerName)) {
-                event.setCanceled(true);
-            }
+        if (!RTSCameraController.get().isActive()) return;
+        if (Minecraft.getInstance().options.hideGui) {
+            event.setCanceled(true);
+            return;
+        }
+
+        ResourceLocation layerName = event.getName();
+        if (!VanillaGuiLayers.CHAT.equals(layerName) &&
+                !VanillaGuiLayers.DEBUG_OVERLAY.equals(layerName) &&
+                !VanillaGuiLayers.TAB_LIST.equals(layerName) &&
+                !VanillaGuiLayers.OVERLAY_MESSAGE.equals(layerName) &&
+                !VanillaGuiLayers.TITLE.equals(layerName) &&
+                !VanillaGuiLayers.SUBTITLE_OVERLAY.equals(layerName)) {
+            event.setCanceled(true);
         }
     }
 
@@ -84,6 +86,7 @@ public class RTSInputHandler {
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.mouseHandler.isMouseGrabbed()) mc.mouseHandler.releaseMouse();
+        NativeCursorController.hideForCamera();
 
         cameraController.tick(mc.getTimer().getGameTimeDeltaPartialTick(false));
 
@@ -173,6 +176,8 @@ public class RTSInputHandler {
         if (!RTSCameraController.get().isActive()) return;
 
         Minecraft mc = Minecraft.getInstance();
+        if (mc.options.hideGui) return;
+
         int width = mc.getWindow().getGuiScaledWidth();
         int height = mc.getWindow().getGuiScaledHeight();
 
@@ -181,6 +186,7 @@ public class RTSInputHandler {
         Entity hoveredEntity = hoveredId != -1 && mc.level != null ? mc.level.getEntity(hoveredId) : null;
 
         ResourceLocation cursorTexture = CameraLibAPI.get().getDelegate().getCursorIcon(hoveredEntity, RTSSelectionManager.get().isRightDragging());
+        if (cursorTexture == null) return;
 
         double guiMouseX = mc.mouseHandler.xpos() * width / mc.getWindow().getScreenWidth();
         double guiMouseY = mc.mouseHandler.ypos() * height / mc.getWindow().getScreenHeight();

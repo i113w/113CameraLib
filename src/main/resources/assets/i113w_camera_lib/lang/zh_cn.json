@@ -1,5 +1,4 @@
 {
   "key.categories.camera_lib": "113 摄像机库",
-  "key.camera_lib.rotate": "旋转摄像机",
-  "message.i113w_camera_lib.orthographic_shader_fallback": "检测到光影包，正交相机已回退到 RTS 伪正交模式。"
+  "key.camera_lib.rotate": "旋转摄像机"
 }
