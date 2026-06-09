@@ -15,7 +15,7 @@ public class RTSCameraController {
     public enum CameraStyle { FREE, RTS, ORTHOGRAPHIC }
 
     private boolean isActive = false;
-    private CameraStyle currentStyle = CameraStyle.RTS;
+    private CameraStyle currentStyle = CameraStyle.ORTHOGRAPHIC;
 
     private RTSCameraEntity cameraEntity;
     private Entity originalViewEntity;
@@ -38,7 +38,7 @@ public class RTSCameraController {
         this.cameraEntity = null;
         this.originalViewEntity = null;
         this.isActive = false;
-        this.currentStyle = CameraStyle.RTS;
+        this.currentStyle = CameraStyle.ORTHOGRAPHIC;
         this.targetPos = Vec3.ZERO;
         NativeCursorController.restoreAfterCamera();
     }
