@@ -44,5 +44,6 @@ Thumbs.db
 !README.md
 !README_CN.md
 !LICENSE.md
+!docs/*.md
 
 freeze-*.txt
