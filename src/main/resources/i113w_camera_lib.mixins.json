@@ -4,8 +4,10 @@
   "package": "com.i113w.camera_lib.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "i113w_camera_lib.refmap.json",
+  "plugin": "com.i113w.camera_lib.mixin.plugin.CameraLibMixinPlugin",
   "client": [
     "GameRendererMixin",
+    "LevelRendererFrustumMixin",
     "LevelRendererMixin"
   ],
   "injectors": {

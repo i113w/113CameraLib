@@ -32,7 +32,9 @@ public class RTSCameraController {
 
     private static final float LERP_SPEED = 0.2f;
     private static final float ORTHOGRAPHIC_LOCKED_PITCH = 35.264389682754654f;
-    private static final double ORTHOGRAPHIC_VIEW_DISTANCE = 128.0;
+    private static final double ORTHOGRAPHIC_MIN_VIEW_DISTANCE = 16.0;
+    private static final double ORTHOGRAPHIC_VIEW_PADDING = 8.0;
+    private static final double ORTHOGRAPHIC_MIN_PITCH_FOR_DISTANCE = 5.0;
     private static final long SHADER_FALLBACK_MESSAGE_INTERVAL_MS = 5000L;
 
     private long lastShaderFallbackMessageMs = 0L;
@@ -191,7 +193,7 @@ public class RTSCameraController {
             goalY = targetPos.y + backward.y;
             goalZ = targetPos.z + backward.z;
         } else if (currentStyle == CameraStyle.ORTHOGRAPHIC) {
-            Vec3 backward = Vec3.directionFromRotation(targetPitch, targetYaw).scale(-ORTHOGRAPHIC_VIEW_DISTANCE);
+            Vec3 backward = Vec3.directionFromRotation(targetPitch, targetYaw).scale(-getOrthographicViewDistance());
             goalX = targetPos.x + backward.x;
             goalY = targetPos.y + backward.y;
             goalZ = targetPos.z + backward.z;
@@ -283,11 +285,24 @@ public class RTSCameraController {
         if (this.cameraEntity != null) {
             this.targetPos = this.cameraEntity.position();
         } else {
-            Vec3 backward = Vec3.directionFromRotation(targetPitch, targetYaw).scale(-ORTHOGRAPHIC_VIEW_DISTANCE);
+            Vec3 backward = Vec3.directionFromRotation(targetPitch, targetYaw).scale(-getOrthographicViewDistance());
             this.targetPos = this.targetPos.add(backward);
         }
         this.currentStyle = CameraStyle.FREE;
         this.targetPitch = Mth.clamp(this.targetPitch, CameraLibConfig.freePitchMin, CameraLibConfig.freePitchMax);
+    }
+
+    private double getOrthographicViewDistance() {
+        Minecraft mc = Minecraft.getInstance();
+        float aspect = 16.0f / 9.0f;
+        if (mc.getWindow().getHeight() > 0) {
+            aspect = Math.max(0.01f, (float) mc.getWindow().getWidth() / (float) mc.getWindow().getHeight());
+        }
+
+        double halfVisibleHeight = (getOrthographicVisibleWidth() * 0.5) / aspect;
+        double pitchRadians = Math.toRadians(Math.max(ORTHOGRAPHIC_MIN_PITCH_FOR_DISTANCE, Math.abs(this.targetPitch)));
+        double groundDepthToNearEdge = halfVisibleHeight / Math.tan(pitchRadians);
+        return Math.max(ORTHOGRAPHIC_MIN_VIEW_DISTANCE, groundDepthToNearEdge + ORTHOGRAPHIC_VIEW_PADDING);
     }
 
     private Vec3 projectCurrentViewToGround() {
