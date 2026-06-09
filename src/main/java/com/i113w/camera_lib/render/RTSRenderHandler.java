@@ -31,9 +31,6 @@ public class RTSRenderHandler {
     public static void onComputeFov(ViewportEvent.ComputeFov event) {
         RTSCameraController controller = RTSCameraController.get();
         if (!controller.isActive()) return;
-        if (controller.getCameraStyle() == RTSCameraController.CameraStyle.ORTHOGRAPHIC) {
-            controller.updateShaderFallback();
-        }
         if (controller.getCameraStyle() == RTSCameraController.CameraStyle.RTS) {
             event.setFOV(25.0);
         }
@@ -53,6 +50,10 @@ public class RTSRenderHandler {
     @SubscribeEvent
     public static void onRenderGuiOverlayPre(RenderGuiOverlayEvent.Pre event) {
         if (!RTSCameraController.get().isActive()) return;
+        if (Minecraft.getInstance().options.hideGui) {
+            event.setCanceled(true);
+            return;
+        }
 
         ResourceLocation id = event.getOverlay().id();
         if (id.equals(VanillaGuiOverlay.CHAT_PANEL.id())    ||
@@ -71,6 +72,7 @@ public class RTSRenderHandler {
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
         if (!RTSCameraController.get().isActive()) return;
+        if (Minecraft.getInstance().options.hideGui) return;
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
 
         renderSelectedOutlines(event);
@@ -129,6 +131,7 @@ public class RTSRenderHandler {
     @SubscribeEvent
     public static void onRenderGui(RenderGuiEvent.Post event) {
         if (!RTSCameraController.get().isActive()) return;
+        if (Minecraft.getInstance().options.hideGui) return;
 
         RTSSelectionManager selMgr = RTSSelectionManager.get();
 

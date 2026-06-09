@@ -3,8 +3,8 @@ package com.i113w.camera_lib.camera;
 import com.i113w.camera_lib.config.CameraLibConfig;
 import com.i113w.camera_lib.entity.CameraLibEntities;
 import com.i113w.camera_lib.entity.RTSCameraEntity;
+import com.i113w.camera_lib.client.NativeCursorController;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
@@ -35,9 +35,6 @@ public class RTSCameraController {
     private static final double ORTHOGRAPHIC_MIN_VIEW_DISTANCE = 16.0;
     private static final double ORTHOGRAPHIC_VIEW_PADDING = 8.0;
     private static final double ORTHOGRAPHIC_MIN_PITCH_FOR_DISTANCE = 5.0;
-    private static final long SHADER_FALLBACK_MESSAGE_INTERVAL_MS = 5000L;
-
-    private long lastShaderFallbackMessageMs = 0L;
 
     private RTSCameraController() {}
 
@@ -53,7 +50,7 @@ public class RTSCameraController {
         this.targetYaw = 0f;
         this.targetPitch = 40f;
         this.zoomLevel = 20f;
-        this.lastShaderFallbackMessageMs = 0L;
+        NativeCursorController.restoreAfterCamera();
     }
 
     public void toggleRTSMode() {
@@ -92,14 +89,7 @@ public class RTSCameraController {
     public Vec3 getFocusPosition() { return targetPos; }
 
     public boolean shouldUseOrthographicProjection() {
-        if (!isActive || currentStyle != CameraStyle.ORTHOGRAPHIC) return false;
-        return !ShaderPackDetector.isShaderPackActive();
-    }
-
-    public void updateShaderFallback() {
-        if (isActive && currentStyle == CameraStyle.ORTHOGRAPHIC && ShaderPackDetector.isShaderPackActive()) {
-            fallbackOrthographicToRts();
-        }
+        return isActive && currentStyle == CameraStyle.ORTHOGRAPHIC;
     }
 
     private void enterRTS() {
@@ -109,8 +99,6 @@ public class RTSCameraController {
         this.originalViewEntity = mc.getCameraEntity();
         Vec3 playerPos = mc.player.getPosition(1.0f);
         this.zoomLevel = 20f;
-
-        updateShaderFallback();
 
         if (isGroundFocusedStyle()) {
             this.targetPos = new Vec3(playerPos.x, playerPos.y, playerPos.z);
@@ -138,6 +126,7 @@ public class RTSCameraController {
 
         mc.setCameraEntity(this.cameraEntity);
         this.isActive = true;
+        NativeCursorController.hideForCamera();
     }
 
     private void exitRTS() {
@@ -152,6 +141,7 @@ public class RTSCameraController {
             cameraEntity = null;
         }
         this.isActive = false;
+        NativeCursorController.restoreAfterCamera();
     }
 
     public void adjustPitch(float delta) {
@@ -180,7 +170,6 @@ public class RTSCameraController {
 
     public void tick(float partialTick) {
         if (!isActive || cameraEntity == null) return;
-        updateShaderFallback();
 
         double goalX;
         double goalY;
@@ -278,7 +267,6 @@ public class RTSCameraController {
         this.currentStyle = CameraStyle.ORTHOGRAPHIC;
         applyRtsRotationRules();
         applyOrthographicPitchLock();
-        updateShaderFallback();
     }
 
     private void switchToFree() {
@@ -332,26 +320,5 @@ public class RTSCameraController {
         if (snap <= 0) return rawYaw;
         float halfSnap = snap / 2f;
         return Math.round((rawYaw - halfSnap) / snap) * snap + halfSnap;
-    }
-
-    private void fallbackOrthographicToRts() {
-        if (this.currentStyle != CameraStyle.ORTHOGRAPHIC) return;
-        this.currentStyle = CameraStyle.RTS;
-        showShaderFallbackMessage();
-    }
-
-    private void showShaderFallbackMessage() {
-        long now = System.currentTimeMillis();
-        if (now - this.lastShaderFallbackMessageMs < SHADER_FALLBACK_MESSAGE_INTERVAL_MS) return;
-        this.lastShaderFallbackMessageMs = now;
-
-        Minecraft mc = Minecraft.getInstance();
-        Component message = Component.translatable("message.i113w_camera_lib.orthographic_shader_fallback");
-        if (mc.player != null) {
-            mc.player.displayClientMessage(message, false);
-            mc.player.displayClientMessage(message, true);
-        } else if (mc.gui != null) {
-            mc.gui.setOverlayMessage(message, false);
-        }
     }
 }

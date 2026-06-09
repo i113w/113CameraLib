@@ -6,6 +6,7 @@ import com.i113w.camera_lib.api.IRTSInteractionDelegate;
 import com.i113w.camera_lib.api.event.RTSBoxSelectEvent;
 import com.i113w.camera_lib.api.event.RTSRightClickEvent;
 import com.i113w.camera_lib.camera.RTSCameraController;
+import com.i113w.camera_lib.client.NativeCursorController;
 import com.i113w.camera_lib.config.CameraLibConfig;
 import com.i113w.camera_lib.math.MouseRayCaster;
 import com.i113w.camera_lib.math.ScreenProjector;
@@ -109,6 +110,7 @@ public class RTSInputHandler {
         if (mc.mouseHandler.isMouseGrabbed()) {
             mc.mouseHandler.releaseMouse();
         }
+        NativeCursorController.hideForCamera();
 
         // 相机插值更新
         cameraMgr.tick(mc.getFrameTime());

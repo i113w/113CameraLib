@@ -65,7 +65,6 @@ public class CameraLibTestCommands {
 
     private static int start(CommandSourceStack source, RTSCameraController.CameraStyle style) {
         RTSCameraController.get().enterMode(style);
-        RTSCameraController.get().updateShaderFallback();
         source.sendSuccess(() -> Component.literal("CameraLib test camera started: " + RTSCameraController.get().getCameraStyle()), false);
         return 1;
     }

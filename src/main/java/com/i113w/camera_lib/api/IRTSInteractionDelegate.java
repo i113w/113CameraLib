@@ -9,10 +9,11 @@ public interface IRTSInteractionDelegate {
     boolean isSelectable(Entity entity);
 
     /**
-     * 获取当前鼠标悬停状态下应该显示的光标贴图
+     * 获取当前鼠标悬停状态下应该显示的光标贴图，返回 null 时隐藏库自定义光标。
      * @param hoveredEntity 当前鼠标悬停的实体（可能为 null）
      * @param isAttackDragging 是否正在右键拉红框
      */
+    @Nullable
     ResourceLocation getCursorIcon(@Nullable Entity hoveredEntity, boolean isAttackDragging);
 
     // 默认实现
@@ -23,9 +24,8 @@ public interface IRTSInteractionDelegate {
         }
 
         @Override
-        public ResourceLocation getCursorIcon(@Nullable Entity hoveredEntity, boolean isAttackDragging) {
-            // Forge 1.20.1 使用 new ResourceLocation
-            return new ResourceLocation("minecraft", "textures/gui/crosshairs.png");
+        public @Nullable ResourceLocation getCursorIcon(@Nullable Entity hoveredEntity, boolean isAttackDragging) {
+            return null;
         }
     };
 }
