@@ -4,6 +4,7 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.*;
@@ -19,13 +20,18 @@ public class MouseRayCaster {
             return BlockHitResult.miss(Vec3.ZERO, Direction.UP, BlockPos.ZERO);
         }
 
+        Entity cameraEntity = camera.entity();
+        if (cameraEntity == null) {
+            return BlockHitResult.miss(Vec3.ZERO, Direction.UP, BlockPos.ZERO);
+        }
+
         Ray ray = calculateRay(camera, mouseX, mouseY, pickRange);
 
         HitResult blockHit = mc.level.clip(new ClipContext(
                 ray.start(), ray.end(),
                 ClipContext.Block.COLLIDER,
                 ClipContext.Fluid.NONE,
-                camera.getEntity()
+                cameraEntity
         ));
 
         double distToBlock = blockHit.getLocation().distanceToSqr(ray.start());
@@ -34,11 +40,12 @@ public class MouseRayCaster {
 
         EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(
                 mc.level,
-                camera.getEntity(),
+                cameraEntity,
                 ray.start(),
                 entityCheckEnd,
                 searchBox,
-                (e) -> e != camera.getEntity() && !e.isSpectator() && e.isPickable()
+                (e) -> e != cameraEntity && !e.isSpectator() && e.isPickable(),
+                0.3f
         );
 
         if (entityHit != null) {
@@ -71,7 +78,7 @@ public class MouseRayCaster {
         if (nearPoint.w != 0) nearPoint.div(nearPoint.w);
         if (farPoint.w != 0) farPoint.div(farPoint.w);
 
-        Vec3 cameraPos = camera.getPosition();
+        Vec3 cameraPos = camera.position();
         Vec3 nearPos = cameraPos.add(nearPoint.x(), nearPoint.y(), nearPoint.z());
         Vec3 direction = new Vec3(
                 farPoint.x() - nearPoint.x(),

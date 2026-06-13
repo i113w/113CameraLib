@@ -14,13 +14,11 @@ public class MatrixCache {
     private static boolean matricesValid = false;
 
     @SubscribeEvent
-    public static void onRenderLevelStage(RenderLevelStageEvent event) {
+    public static void onRenderLevelStage(RenderLevelStageEvent.AfterOpaqueFeatures event) {
         // 在实体渲染后捕获矩阵，确保 3D 转 2D 投影正确
-        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
-            cachedModelViewMatrix.set(event.getModelViewMatrix());
-            cachedProjectionMatrix.set(event.getProjectionMatrix());
-            matricesValid = true;
-        }
+        cachedModelViewMatrix.set(event.getModelViewMatrix());
+        cachedProjectionMatrix.set(event.getLevelRenderState().cameraRenderState.projectionMatrix);
+        matricesValid = true;
     }
 
     public static Matrix4f getModelViewMatrix() {

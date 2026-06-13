@@ -7,11 +7,12 @@ import com.i113w.camera_lib.selection.RTSSelectionManager;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.ShapeRenderer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -24,12 +25,10 @@ import java.util.Set;
 public class RTSRenderHandler {
 
     @SubscribeEvent
-    public static void onRenderLevel(RenderLevelStageEvent event) {
+    public static void onRenderLevel(RenderLevelStageEvent.AfterTranslucentBlocks event) {
         if (!RTSCameraController.get().isActive()) return;
         if (Minecraft.getInstance().options.hideGui) return;
-        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
-            renderSelectedOutlines(event);
-        }
+        renderSelectedOutlines(event);
     }
 
     @SubscribeEvent
@@ -41,25 +40,27 @@ public class RTSRenderHandler {
         if (manager.isDragging()) {
             var rect = manager.getSelectionRect();
             event.getGuiGraphics().fill((int)rect.x(), (int)rect.y(), (int)(rect.x() + rect.width()), (int)(rect.y() + rect.height()), 0x8000FF00);
-            event.getGuiGraphics().renderOutline((int)rect.x(), (int)rect.y(), (int)rect.width(), (int)rect.height(), 0xFF00FF00);
+            event.getGuiGraphics().outline((int)rect.x(), (int)rect.y(), (int)rect.width(), (int)rect.height(), 0xFF00FF00);
         }
         if (manager.isRightDragging()) {
             var rect = manager.getRightDragRect();
             event.getGuiGraphics().fill((int)rect.x(), (int)rect.y(), (int)(rect.x() + rect.width()), (int)(rect.y() + rect.height()), 0x80FF0000);
-            event.getGuiGraphics().renderOutline((int)rect.x(), (int)rect.y(), (int)rect.width(), (int)rect.height(), 0xFFFF0000);
+            event.getGuiGraphics().outline((int)rect.x(), (int)rect.y(), (int)rect.width(), (int)rect.height(), 0xFFFF0000);
         }
     }
 
-    private static void renderSelectedOutlines(RenderLevelStageEvent event) {
+    private static void renderSelectedOutlines(RenderLevelStageEvent.AfterTranslucentBlocks event) {
         Set<Integer> selectedIds = CameraLibAPI.get().getSelectedEntities();
         int hoveredId = CameraLibAPI.get().getHoveredEntityId();
 
         if (selectedIds.isEmpty() && hoveredId == -1) return;
 
         Minecraft mc = Minecraft.getInstance();
-        Vec3 camPos = event.getCamera().getPosition();
+        if (mc.level == null) return;
+
+        Vec3 camPos = event.getLevelRenderState().cameraRenderState.pos;
         PoseStack poseStack = event.getPoseStack();
-        VertexConsumer buffer = mc.renderBuffers().bufferSource().getBuffer(RenderType.lines());
+        VertexConsumer buffer = mc.renderBuffers().bufferSource().getBuffer(RenderTypes.lines());
 
         for (Integer id : selectedIds) {
             Entity entity = mc.level.getEntity(id);
@@ -78,9 +79,12 @@ public class RTSRenderHandler {
 
     private static void renderEntityOutline(PoseStack poseStack, VertexConsumer buffer, Entity entity, Vec3 camPos, float r, float g, float b, float a) {
         poseStack.pushPose();
-        poseStack.translate(entity.getX() - camPos.x, entity.getY() - camPos.y, entity.getZ() - camPos.z);
-        AABB localAABB = entity.getBoundingBox().move(-entity.getX(), -entity.getY(), -entity.getZ()).inflate(0.05);
-        LevelRenderer.renderLineBox(poseStack, buffer, localAABB, r, g, b, a);
+        AABB localAABB = entity.getBoundingBox().move(-camPos.x, -camPos.y, -camPos.z).inflate(0.05);
+        int color = ((int)(a * 255.0f) << 24)
+                | ((int)(r * 255.0f) << 16)
+                | ((int)(g * 255.0f) << 8)
+                | (int)(b * 255.0f);
+        ShapeRenderer.renderShape(poseStack, buffer, Shapes.create(localAABB), 0.0, 0.0, 0.0, color, 1.0f);
         poseStack.popPose();
     }
 }

@@ -5,10 +5,10 @@ import com.i113w.camera_lib.entity.RTSCameraEntity;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 
-public class RTSCameraRenderer extends EntityRenderer<RTSCameraEntity> {
+public class RTSCameraRenderer extends EntityRenderer<RTSCameraEntity, EntityRenderState> {
 
     public RTSCameraRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -21,8 +21,8 @@ public class RTSCameraRenderer extends EntityRenderer<RTSCameraEntity> {
     }
 
     @Override
-    public ResourceLocation getTextureLocation(RTSCameraEntity entity) {
-        return ResourceLocation.withDefaultNamespace("textures/misc/white.png");
+    public EntityRenderState createRenderState() {
+        return new EntityRenderState();
     }
 
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {

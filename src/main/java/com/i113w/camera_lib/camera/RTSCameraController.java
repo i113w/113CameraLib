@@ -28,7 +28,7 @@ public class RTSCameraController {
     private static final float LERP_SPEED = 0.2f;
     private static final float ORTHOGRAPHIC_LOCKED_PITCH = 35.264389682754654f;
     private static final double ORTHOGRAPHIC_MIN_VIEW_DISTANCE = 16.0;
-    private static final double ORTHOGRAPHIC_VIEW_PADDING = 8.0;
+    private static final double ORTHOGRAPHIC_VIEW_PADDING = 16.0;
     private static final double ORTHOGRAPHIC_MIN_PITCH_FOR_DISTANCE = 5.0;
 
     public static RTSCameraController get() { return INSTANCE; }
@@ -104,7 +104,7 @@ public class RTSCameraController {
             this.targetPitch = 60f; // 初始默认
         }
 
-        int minHeight = mc.level.getMinBuildHeight();
+        int minHeight = mc.level.getMinY();
         if (this.targetPos.y < minHeight + 5) {
             this.targetPos = new Vec3(this.targetPos.x, minHeight + 10, this.targetPos.z);
         }
@@ -211,18 +211,20 @@ public class RTSCameraController {
         double dz = (moveZ * cos + moveX * sin) * moveSpeed;
         double dy = moveY * moveSpeed;
 
-        int minHeight = Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getMinBuildHeight() : -64;
+        int minHeight = Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getMinY() : -64;
 
         if (isGroundFocusedStyle()) {
             this.targetPos = this.targetPos.add(dx, dy, dz);
-            double clampedY = Mth.clamp(this.targetPos.y, minHeight, 320);
+            int maxHeight = Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getMaxY() : 320;
+            double clampedY = Mth.clamp(this.targetPos.y, minHeight, maxHeight);
             this.targetPos = new Vec3(this.targetPos.x, clampedY, this.targetPos.z);
         } else {
             this.targetPos = this.targetPos.add(dx, dy, dz);
             // 应用自由相机旋转速度
             this.targetYaw += rotateYaw * CameraLibConfig.freeRotationSpeed;
             this.targetPos = this.targetPos.add(0, zoomDelta * -2.0, 0);
-            double clampedY = Mth.clamp(this.targetPos.y, minHeight + 5, 320);
+            int maxHeight = Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getMaxY() : 320;
+            double clampedY = Mth.clamp(this.targetPos.y, minHeight + 5, maxHeight);
             this.targetPos = new Vec3(this.targetPos.x, clampedY, this.targetPos.z);
         }
     }

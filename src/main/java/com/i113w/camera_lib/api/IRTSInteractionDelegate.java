@@ -1,6 +1,6 @@
 package com.i113w.camera_lib.api;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,14 +16,14 @@ public interface IRTSInteractionDelegate {
      * @param isAttackDragging 是否正在右键拉红框
      */
     @Nullable
-    ResourceLocation getCursorIcon(@Nullable Entity hoveredEntity, boolean isAttackDragging);
+    Identifier getCursorIcon(@Nullable Entity hoveredEntity, boolean isAttackDragging);
 
     // 默认实现
     IRTSInteractionDelegate DEFAULT = new IRTSInteractionDelegate() {
         @Override
         public boolean isSelectable(Entity entity) { return true; }
         @Override
-        public @Nullable ResourceLocation getCursorIcon(@Nullable Entity hoveredEntity, boolean isAttackDragging) {
+        public @Nullable Identifier getCursorIcon(@Nullable Entity hoveredEntity, boolean isAttackDragging) {
             return null;
         }
     };

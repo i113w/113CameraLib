@@ -30,7 +30,7 @@ public class CameraLib {
         CameraLibEntities.register(modEventBus);
 
         // 客户端专有注册
-        if (FMLEnvironment.dist == Dist.CLIENT) {
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
             modEventBus.addListener(CameraLibKeyMappings::onRegisterKeyMappings);
             modEventBus.addListener(RTSCameraRenderer::onRegisterRenderers);
         }

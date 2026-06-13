@@ -1,5 +1,6 @@
 package com.i113w.camera_lib.mixin.plugin;
 
+import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.fml.loading.LoadingModList;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
@@ -26,9 +27,13 @@ public class CameraLibMixinPlugin implements IMixinConfigPlugin {
     }
 
     private static boolean isRendererReplacementLoaded() {
-        return LoadingModList.get().getModFileById("embeddium") != null
-                || LoadingModList.get().getModFileById("rubidium") != null
-                || LoadingModList.get().getModFileById("sodium") != null;
+        FMLLoader loader = FMLLoader.getCurrentOrNull();
+        if (loader == null) return false;
+
+        LoadingModList modList = loader.getLoadingModList();
+        return modList.getModFileById("embeddium") != null
+                || modList.getModFileById("rubidium") != null
+                || modList.getModFileById("sodium") != null;
     }
 
     @Override

@@ -2,10 +2,11 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.i113w.camera_lib.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_25",
   "plugin": "com.i113w.camera_lib.mixin.plugin.CameraLibMixinPlugin",
   "client": [
-    "GameRendererMixin",
+    "ClientInputAccessor",
+    "CameraMixin",
     "LevelRendererFrustumMixin",
     "LevelRendererMixin"
   ],

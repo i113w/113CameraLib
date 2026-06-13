@@ -2,6 +2,8 @@ package com.i113w.camera_lib.entity;
 
 import com.i113w.camera_lib.CameraLib;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.neoforged.bus.api.IEventBus;
@@ -18,7 +20,7 @@ public class CameraLibEntities {
                     .noSave()
                     .clientTrackingRange(4)
                     .updateInterval(20)
-                    .build("rts_camera"));
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(CameraLib.MODID, "rts_camera"))));
 
     public static void register(IEventBus bus) {
         ENTITIES.register(bus);

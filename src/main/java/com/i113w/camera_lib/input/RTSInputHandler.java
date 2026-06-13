@@ -10,14 +10,17 @@ import com.i113w.camera_lib.client.NativeCursorController;
 import com.i113w.camera_lib.config.CameraLibConfig;
 import com.i113w.camera_lib.math.MouseRayCaster;
 import com.i113w.camera_lib.math.ScreenProjector;
+import com.i113w.camera_lib.mixin.ClientInputAccessor;
 import com.i113w.camera_lib.selection.RTSSelectionManager;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -39,10 +42,8 @@ public class RTSInputHandler {
     @SubscribeEvent
     public static void onInputUpdate(MovementInputUpdateEvent event) {
         if (RTSCameraController.get().isActive()) {
-            event.getInput().forwardImpulse = 0;
-            event.getInput().leftImpulse = 0;
-            event.getInput().jumping = false;
-            event.getInput().shiftKeyDown = false;
+            event.getInput().keyPresses = Input.EMPTY;
+            ((ClientInputAccessor) event.getInput()).i113wCameraLib$setMoveVector(Vec2.ZERO);
         }
     }
 
@@ -51,7 +52,7 @@ public class RTSInputHandler {
         RTSCameraController controller = RTSCameraController.get();
         if (!controller.isActive()) return;
         if (controller.getCameraStyle() == RTSCameraController.CameraStyle.RTS) {
-            event.setFOV(25.0);
+            event.setFOV(25.0f);
         }
     }
 
@@ -68,9 +69,8 @@ public class RTSInputHandler {
             return;
         }
 
-        ResourceLocation layerName = event.getName();
+        Identifier layerName = event.getName();
         if (!VanillaGuiLayers.CHAT.equals(layerName) &&
-                !VanillaGuiLayers.DEBUG_OVERLAY.equals(layerName) &&
                 !VanillaGuiLayers.TAB_LIST.equals(layerName) &&
                 !VanillaGuiLayers.OVERLAY_MESSAGE.equals(layerName) &&
                 !VanillaGuiLayers.TITLE.equals(layerName) &&
@@ -88,7 +88,7 @@ public class RTSInputHandler {
         if (mc.mouseHandler.isMouseGrabbed()) mc.mouseHandler.releaseMouse();
         NativeCursorController.hideForCamera();
 
-        cameraController.tick(mc.getTimer().getGameTimeDeltaPartialTick(false));
+        cameraController.tick(mc.getDeltaTracker().getGameTimeDeltaPartialTick(false));
 
         float moveX = 0, moveZ = 0, moveY = 0;
         if (mc.options.keyUp.isDown()) moveZ += 1;
@@ -109,12 +109,12 @@ public class RTSInputHandler {
                     // 读取配置的吸附角度
                     float step = deltaX > 0 ? CameraLibConfig.rtsSnapAngle : -CameraLibConfig.rtsSnapAngle;
                     cameraController.snapYaw(step);
-                    GLFW.glfwSetCursorPos(mc.getWindow().getWindow(), centerX, mc.getWindow().getScreenHeight() / 2.0);
+                    GLFW.glfwSetCursorPos(mc.getWindow().handle(), centerX, mc.getWindow().getScreenHeight() / 2.0);
                 }
             } else {
                 if (Math.abs(deltaX) > 5.0) {
                     rotateYaw = (float) (deltaX * 0.05); // 原始鼠标灵敏度计算保留，最终旋转速度由 Controller 乘算配置得出
-                    GLFW.glfwSetCursorPos(mc.getWindow().getWindow(), centerX, mc.getWindow().getScreenHeight() / 2.0);
+                    GLFW.glfwSetCursorPos(mc.getWindow().handle(), centerX, mc.getWindow().getScreenHeight() / 2.0);
                 }
             }
         } else {
@@ -185,15 +185,13 @@ public class RTSInputHandler {
         int hoveredId = CameraLibAPI.get().getHoveredEntityId();
         Entity hoveredEntity = hoveredId != -1 && mc.level != null ? mc.level.getEntity(hoveredId) : null;
 
-        ResourceLocation cursorTexture = CameraLibAPI.get().getDelegate().getCursorIcon(hoveredEntity, RTSSelectionManager.get().isRightDragging());
+        Identifier cursorTexture = CameraLibAPI.get().getDelegate().getCursorIcon(hoveredEntity, RTSSelectionManager.get().isRightDragging());
         if (cursorTexture == null) return;
 
         double guiMouseX = mc.mouseHandler.xpos() * width / mc.getWindow().getScreenWidth();
         double guiMouseY = mc.mouseHandler.ypos() * height / mc.getWindow().getScreenHeight();
 
-        RenderSystem.enableBlend();
-        event.getGuiGraphics().blit(cursorTexture, (int) guiMouseX, (int) guiMouseY, 0, 0, 16, 16, 16, 16);
-        RenderSystem.disableBlend();
+        event.getGuiGraphics().blit(RenderPipelines.GUI_TEXTURED, cursorTexture, (int) guiMouseX, (int) guiMouseY, 0, 0, 16, 16, 16, 16);
     }
 
     @SubscribeEvent
@@ -242,7 +240,7 @@ public class RTSInputHandler {
 
         var rect = RTSSelectionManager.get().getSelectionRect();
         List<Entity> candidates = new ArrayList<>();
-        Vec3 camPos = mc.gameRenderer.getMainCamera().getPosition();
+        Vec3 camPos = mc.gameRenderer.getMainCamera().position();
         Vec3 selectionCenter = RTSCameraController.get().isGroundFocusedStyle() ? RTSCameraController.get().getFocusPosition() : camPos;
         IRTSInteractionDelegate delegate = CameraLibAPI.get().getDelegate();
 
@@ -280,7 +278,7 @@ public class RTSInputHandler {
             NeoForge.EVENT_BUS.post(new RTSRightClickEvent(hit));
         } else {
             List<Entity> candidates = new ArrayList<>();
-            Vec3 camPos = mc.gameRenderer.getMainCamera().getPosition();
+            Vec3 camPos = mc.gameRenderer.getMainCamera().position();
 
             for (Entity entity : mc.level.entitiesForRendering()) {
                 if (!(entity instanceof LivingEntity) || !entity.isAlive() || entity == mc.player) continue;
@@ -302,6 +300,8 @@ public class RTSInputHandler {
         double horizontalDistSqr = entity.position().distanceToSqr(camPos.x, entity.getY(), camPos.z);
         if (horizontalDistSqr > 256.0 * 256.0) return false;
 
-        return entity.getY() >= -64 && entity.getY() <= 320;
+        int minY = Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getMinY() : -64;
+        int maxY = Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getMaxY() : 320;
+        return entity.getY() >= minY && entity.getY() <= maxY;
     }
 }
