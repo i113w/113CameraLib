@@ -33,7 +33,7 @@ public class RTSCameraController {
     private static final float LERP_SPEED = 0.2f;
     private static final float ORTHOGRAPHIC_LOCKED_PITCH = 35.264389682754654f;
     private static final double ORTHOGRAPHIC_MIN_VIEW_DISTANCE = 16.0;
-    private static final double ORTHOGRAPHIC_VIEW_PADDING = 8.0;
+    private static final double ORTHOGRAPHIC_VIEW_PADDING = 16.0;
     private static final double ORTHOGRAPHIC_MIN_PITCH_FOR_DISTANCE = 5.0;
 
     private RTSCameraController() {}
@@ -118,7 +118,7 @@ public class RTSCameraController {
             this.targetPos = new Vec3(this.targetPos.x, minHeight + 10, this.targetPos.z);
         }
 
-        this.cameraEntity = new RTSCameraEntity(CameraLibEntities.RTS_CAMERA.get(), mc.level);
+        this.cameraEntity = new RTSCameraEntity(resolveCameraType(), mc.level);
         this.cameraEntity.setPos(this.targetPos);
         this.cameraEntity.setYRot(targetYaw);
         this.cameraEntity.setXRot(targetPitch);
@@ -126,6 +126,21 @@ public class RTSCameraController {
         mc.setCameraEntity(this.cameraEntity);
         this.isActive = true;
         NativeCursorController.hideForCamera();
+    }
+
+    private static net.minecraft.world.entity.EntityType<?> resolveCameraType() {
+        // The registered rts_camera entity type can be dropped by the registry sync when this
+        // client-only mod is used on a dedicated server that does not include it (Forge clears
+        // client-only registry entries the server lacks). RTSCameraEntity is purely client-side.
+        if (CameraLibEntities.RTS_CAMERA.isPresent()) {
+            return CameraLibEntities.RTS_CAMERA.get();
+        }
+        // The registered rts_camera entity type was dropped by the registry sync when
+        // connecting to a server that lacks camera_lib. A new EntityType cannot be
+        // built at runtime (the registry is already frozen), so use a vanilla
+        // always-present entity type as a placeholder; the camera entity is never
+        // rendered or tracked, so its concrete type is irrelevant.
+        return net.minecraft.world.entity.EntityType.ARMOR_STAND;
     }
 
     private void exitRTS() {
